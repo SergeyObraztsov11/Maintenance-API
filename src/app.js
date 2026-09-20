@@ -8,6 +8,7 @@ import { errorHandler } from "./middlewares/errorHandler.js";
 import { notFoundHandler } from "./middlewares/notFoundHandler.js";
 import { requestLogger } from "./middlewares/requestLogger.js";
 import { requestId } from "./middlewares/requestId.js";
+import { requireApiKey } from "./middlewares/requireApiKey.js";
 import { config } from "./config/index.js";
 
 const app = express();
@@ -41,6 +42,7 @@ const apiRateLimit = rateLimit({
 });
 
 app.use("/api", apiRateLimit);
+app.use("/api", requireApiKey);
 
 app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });

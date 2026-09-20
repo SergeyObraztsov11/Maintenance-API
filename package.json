@@ -12,7 +12,11 @@
     "format:check": "prettier --check src",
     "format:fix": "prettier --write src",
     "check": "npm run lint:check && npm run format:check",
-    "fix": "npm run lint:fix && npm run format:fix"
+    "fix": "npm run lint:fix && npm run format:fix",
+    "docker:build": "docker build -t maintenance-api .",
+    "docker:up": "docker compose up --build -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f api"
   },
   "keywords": [],
   "author": "",
