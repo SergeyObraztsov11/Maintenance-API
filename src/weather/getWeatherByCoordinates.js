@@ -8,7 +8,7 @@ function buildUrl(latitude, longitude, days) {
     url.searchParams.set("longitude", String(longitude));
     url.searchParams.set(
         "daily",
-        "temperature_2m_max,temperature_2m_min,precipitation_sum",
+        "temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max",
     );
     url.searchParams.set("forecast_days", String(days));
     url.searchParams.set("timezone", "auto");
@@ -50,6 +50,7 @@ export async function getWeatherByCoordinates(latitude, longitude, days) {
             maxTemperature: daily.temperature_2m_max[index],
             minTemperature: daily.temperature_2m_min[index],
             precipitation: daily.precipitation_sum[index],
+            windSpeedMax: daily.wind_speed_10m_max[index],
         }));
     } catch (error) {
         if (error.name === "AbortError") {

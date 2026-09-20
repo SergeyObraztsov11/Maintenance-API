@@ -45,7 +45,6 @@ export const equipmentService = {
             meta: { total, page, limit },
         };
     },
-
     async getById(id) {
         const equipment = await equipmentRepository.findById(id);
         if (!equipment) {
@@ -53,7 +52,6 @@ export const equipmentService = {
         }
         return equipment;
     },
-
     async create(input) {
         const existing = await equipmentRepository.findBySerialNumber(
             input.serialNumber,
@@ -80,7 +78,6 @@ export const equipmentService = {
 
         return equipmentRepository.create(equipment);
     },
-
     async update(id, input) {
         await this.getById(id);
 
@@ -101,7 +98,6 @@ export const equipmentService = {
 
         return equipmentRepository.update(id, patch);
     },
-
     async remove(id) {
         await this.getById(id);
         const requests = await requestRepository.findByEquipmentId(id);
