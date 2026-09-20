@@ -14,4 +14,4 @@ app.use("/api/equipment", equipmentRoutes);
 
 app.use(errorHandler);
 
-export default app;
+export default app;а
