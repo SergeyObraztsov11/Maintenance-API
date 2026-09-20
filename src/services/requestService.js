@@ -121,15 +121,6 @@ export const requestService = {
 
     async remove(id) {
         await this.getById(id);
-        const requests = await requestRepository.findByEquipmentId(id);
-        const hasOpen = requests.some(
-            (item) => item.status === "new" || item.status === "in_progress",
-        );
-        if (hasOpen) {
-            throw new ConflictError(
-                `Cannot delete equipment ${id}: open maintenance requests exist`,
-            );
-        }
-        await equipmentRepository.remove(id);
+        await requestRepository.remove(id);
     },
 };
