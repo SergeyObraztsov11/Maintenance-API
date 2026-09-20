@@ -2,6 +2,7 @@ import express from "express";
 import equipmentRoutes from "./routes/equipmentRoutes.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
 import requestRoutes from "./routes/requestRoutes.js";
+import { notFoundHandler } from "./middlewares/notFoundHandler.js";
 
 const app = express();
 
@@ -14,6 +15,7 @@ app.get("/api/health", (req, res) => {
 app.use("/api/equipment", equipmentRoutes);
 app.use("/api/requests", requestRoutes);
 
+app.use(notFoundHandler);
 app.use(errorHandler);
 
 export default app;
