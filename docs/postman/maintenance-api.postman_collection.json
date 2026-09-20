@@ -6,10 +6,19 @@
   },
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "apiKey", "value": "dev-api-key-change-me" },
     { "key": "equipmentId", "value": "" },
     { "key": "requestId", "value": "" },
     { "key": "serialNumber", "value": "SN-POSTMAN-001" }
   ],
+  "auth": {
+    "type": "apikey",
+    "apikey": [
+      { "key": "key", "value": "X-API-Key", "type": "string" },
+      { "key": "value", "value": "{{apiKey}}", "type": "string" },
+      { "key": "in", "value": "header", "type": "string" }
+    ]
+  },
   "item": [
     {
       "name": "Health",

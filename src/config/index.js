@@ -14,4 +14,5 @@ export const config = {
     weatherPrecipitationMaxMm:
         Number(process.env.WEATHER_PRECIPITATION_MAX_MM) || 0.1,
     dataDir: process.env.DATA_DIR || "data",
+    apiKey: process.env.API_KEY || "",
 };

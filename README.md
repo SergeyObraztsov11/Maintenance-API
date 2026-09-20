@@ -28,6 +28,16 @@ npm run dev
 
 Проверка: [http://localhost:3000/api/health](http://localhost:3000/api/health) -> `{"status":"ok"}`.
 
+### Docker
+
+```bash
+cp .env.example .env
+npm run docker:up
+# или: npm run docker:build && docker run --rm -p 3000:3000 --env-file .env maintenance-api
+```
+
+Остановка: `npm run docker:down`. Данные в `./data` монтируются в контейнер.
+
 ## Проверка кода
 
 ```bash
@@ -54,6 +64,7 @@ npm run fix             # lint + format (исправление)
 | `WEATHER_PRECIPITATION_MAX_MM` | `0.1` | Порог осадков (мм) |
 | `DATA_DIR` | `data` | Каталог JSON-хранилища |
 | `LOG_LEVEL` | `info` | Уровень логов: `error` / `warn` / `info` / `debug` |
+| `API_KEY` | `dev-api-key-change-me` | Ключ для POST / PATCH / DELETE (заголовок `X-API-Key`) |
 
 Файл `.env` в репозиторий не коммитится. Образец — `.env.example`.
 
@@ -211,6 +222,7 @@ in_progress -> rejected
 - **Rate limit** — на префикс `/api`: при превышении **429**, заголовки `RateLimit-*`, в теле единый формат ошибки с `requestId`.
 - **Helmet** — защитные HTTP-заголовки.
 - **Лимит тела** — `express.json({ limit: "100kb" })`.
+- **API-ключ** — для `POST` / `PATCH` / `DELETE` нужен заголовок `X-API-Key` со значением из `API_KEY`. `GET` и `/api/health` без ключа.
 - **Секреты** — только в `.env`, не в репозитории. В `production` стек и внутренние детали в ответ не отдаются.
 - Cookie в проекте не используются.
 
