@@ -76,7 +76,7 @@ npm run fix             # lint + format (исправление)
 | PATCH | `/api/requests/:id/status` | Смена статуса с проверкой перехода |
 | DELETE | `/api/requests/:id` | Удаление заявки |
 
-Query для списков (примеры): `status`, `type` / `priority`, `equipmentId`, `sortBy`, `sortOrder`, `page`, `limit`.  
+Query для списков (примеры): `status`, `type` / `priority`, `equipmentId`, `createdAtFrom`, `createdAtTo`, `installedAtFrom` / `installedAtTo` (equipment), `plannedAtFrom` / `plannedAtTo` (requests), `sortBy`, `sortOrder`, `page`, `limit`.  
 Для weather: `days` (1–7, по умолчанию 3).
 
 ## Модель данных

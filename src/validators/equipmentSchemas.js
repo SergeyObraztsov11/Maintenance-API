@@ -8,6 +8,12 @@ const equipmentStatuses = [
     "decommissioned",
 ];
 
+const isoDateString = z
+    .string()
+    .refine((value) => !Number.isNaN(Date.parse(value)), {
+        message: "Must be a valid ISO date or date-time",
+    });
+
 export const equipmentIdParamsSchema = z.object({
     id: z.string().uuid(),
 });
@@ -16,6 +22,10 @@ export const equipmentListQuerySchema = z
     .object({
         status: z.enum(equipmentStatuses).optional(),
         type: z.enum(equipmentTypes).optional(),
+        installedAtFrom: isoDateString.optional(),
+        installedAtTo: isoDateString.optional(),
+        createdAtFrom: isoDateString.optional(),
+        createdAtTo: isoDateString.optional(),
         sortBy: z
             .enum([
                 "name",
