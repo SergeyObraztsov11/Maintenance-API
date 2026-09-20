@@ -2,6 +2,7 @@
 // Ошибки передаем в next() для общего обработчика.
 
 import { equipmentService } from "../services/equipmentService.js";
+import { weatherService } from "../services/weatherService.js";
 
 export const equipmentController = {
     async list(req, res, next) {
@@ -46,6 +47,18 @@ export const equipmentController = {
         try {
             await equipmentService.remove(req.params.id);
             res.status(204).send();
+        } catch (error) {
+            next(error);
+        }
+    },
+    async getWeather(req, res, next) {
+        try {
+            const days = Number(req.query.days) || 3;
+            const data = await weatherService.getForEquipment(
+                req.params.id,
+                days,
+            );
+            res.status(200).json({ data });
         } catch (error) {
             next(error);
         }

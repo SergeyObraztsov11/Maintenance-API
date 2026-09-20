@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { equipmentRepository } from "../repositories/equipmentRepository.js";
 import { NotFoundError } from "../errors/NotFoundError.js";
 import { ConflictError } from "../errors/ConflictError.js";
+import { requestRepository } from "../repositories/requestRepository.js";
 
 export const equipmentService = {
     async list(query = {}) {
@@ -44,7 +45,6 @@ export const equipmentService = {
             meta: { total, page, limit },
         };
     },
-
     async getById(id) {
         const equipment = await equipmentRepository.findById(id);
         if (!equipment) {
@@ -52,7 +52,6 @@ export const equipmentService = {
         }
         return equipment;
     },
-
     async create(input) {
         const existing = await equipmentRepository.findBySerialNumber(
             input.serialNumber,
@@ -79,7 +78,6 @@ export const equipmentService = {
 
         return equipmentRepository.create(equipment);
     },
-
     async update(id, input) {
         await this.getById(id);
 
@@ -100,9 +98,17 @@ export const equipmentService = {
 
         return equipmentRepository.update(id, patch);
     },
-
     async remove(id) {
         await this.getById(id);
+        const requests = await requestRepository.findByEquipmentId(id);
+        const hasOpen = requests.some(
+            (item) => item.status === "new" || item.status === "in_progress",
+        );
+        if (hasOpen) {
+            throw new ConflictError(
+                `Cannot delete equipment ${id}: open maintenance requests exist`,
+            );
+        }
         await equipmentRepository.remove(id);
     },
 };

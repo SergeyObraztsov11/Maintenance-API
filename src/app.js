@@ -1,17 +1,19 @@
 import express from "express";
 import equipmentRoutes from "./routes/equipmentRoutes.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
+import requestRoutes from "./routes/requestRoutes.js";
 
 const app = express();
 
 app.use(express.json({ limit: "100kb" }));
 
 app.get("/api/health", (req, res) => {
-  res.json({ status: "ok" });
+    res.json({ status: "ok" });
 });
 
 app.use("/api/equipment", equipmentRoutes);
+app.use("/api/requests", requestRoutes);
 
 app.use(errorHandler);
 
-export default app;а
+export default app;
