@@ -3,10 +3,13 @@ import equipmentRoutes from "./routes/equipmentRoutes.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
 import requestRoutes from "./routes/requestRoutes.js";
 import { notFoundHandler } from "./middlewares/notFoundHandler.js";
-
+import { requestLogger } from "./middlewares/requestLogger.js";
+import { requestId } from "./middlewares/requestId.js";
 const app = express();
 
 app.use(express.json({ limit: "100kb" }));
+app.use(requestId);
+app.use(requestLogger);
 
 app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });

@@ -2,6 +2,7 @@
 
 import { BaseError } from "../errors/BaseError.js";
 import { config } from "../config/index.js";
+import { logger } from "../logger/index.js";
 
 export function errorHandler(err, req, res, next) {
     const statusCode = err instanceof BaseError ? err.statusCode : 500;
@@ -11,7 +12,13 @@ export function errorHandler(err, req, res, next) {
             ? err.message
             : "Internal server error";
     const details = err instanceof BaseError ? err.details : [];
-
+    logger.error("error handled", {
+        requestId: req.requestId ?? null,
+        statusCode,
+        code,
+        message,
+        details,
+    });
     res.status(statusCode).json({
         error: {
             code,
