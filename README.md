@@ -28,6 +28,17 @@ npm run dev
 
 Проверка: [http://localhost:3000/api/health](http://localhost:3000/api/health) -> `{"status":"ok"}`.
 
+## Проверка кода
+
+```bash
+npm run lint:check      # ESLint
+npm run lint:fix        # ESLint, автоисправление
+npm run format:check    # Prettier, проверка
+npm run format:fix      # Prettier, форматирование
+npm run check           # lint + format (проверка)
+npm run fix             # lint + format (исправление)
+```
+
 ## Переменные окружения
 
 | Переменная | По умолчанию | Описание |
@@ -231,7 +242,7 @@ src/
   server.js              # запуск HTTP-сервера
   config/                # конфигурация из env
   routes/                # маршруты
-  controllerss/          # HTTP-слой
+  controllers/           # HTTP-слой
   services/              # бизнес-логика
   repositories/          # доступ к JSON-данным
   validators/            # схемы Zod
