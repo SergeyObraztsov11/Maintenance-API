@@ -1,3 +1,5 @@
+// Клиент Open-Meteo из кейса 1. Дальше вызывается из weather-сервиса, не из контроллера.
+
 import { config } from "../config/index.js";
 
 function buildUrl(latitude, longitude, days) {

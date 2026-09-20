@@ -1,3 +1,5 @@
+// Бизнес-логика оборудования: правила, id, конфликты серийников.
+
 import { randomUUID } from "node:crypto";
 import { equipmentRepository } from "../repositories/equipmentRepository.js";
 import { NotFoundError } from "../errors/NotFoundError.js";

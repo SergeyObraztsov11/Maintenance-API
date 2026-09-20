@@ -1,3 +1,5 @@
+// Маршруты /api/equipment -> методы контроллера.
+
 import { Router } from "express";
 import { equipmentController } from "../controllers/equipmentController.js";
 

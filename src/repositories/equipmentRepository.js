@@ -1,3 +1,4 @@
+// Слой данных оборудования: чтение/запись JSON файла.
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { config } from "../config/index.js";

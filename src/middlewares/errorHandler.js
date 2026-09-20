@@ -1,3 +1,5 @@
+// Единый ответ об ошибке. requestId появится после middleware логирования.
+
 import { BaseError } from "../errors/BaseError.js";
 import { config } from "../config/index.js";
 

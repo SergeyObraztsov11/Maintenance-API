@@ -1,3 +1,6 @@
+// HTTP-слой: req/res -> вызов сервиса -> статус и JSON.
+// Ошибки передаем в next() для общего обработчика.
+
 import { equipmentService } from "../services/equipmentService.js";
 
 export const equipmentController = {

@@ -1,3 +1,4 @@
+// Базовый тип ошибок приложения.
 export class BaseError extends Error {
     constructor(message, { statusCode, code, details } = {}) {
         super(message);
