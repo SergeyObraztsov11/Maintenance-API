@@ -3,6 +3,7 @@ import { requestRepository } from "../repositories/requestRepository.js";
 import { equipmentRepository } from "../repositories/equipmentRepository.js";
 import { NotFoundError } from "../errors/NotFoundError.js";
 import { ConflictError } from "../errors/ConflictError.js";
+import { isInDateRange } from "../utils/dateRange.js";
 
 // Бизнес-логика заявок: правила, статусы, привязка к оборудованию.
 const ALLOWED_TRANSITIONS = {
@@ -25,6 +26,24 @@ export const requestService = {
         if (query.equipmentId) {
             items = items.filter(
                 (item) => item.equipmentId === query.equipmentId,
+            );
+        }
+        if (query.createdAtFrom || query.createdAtTo) {
+            items = items.filter((item) =>
+                isInDateRange(
+                    item.createdAt,
+                    query.createdAtFrom,
+                    query.createdAtTo,
+                ),
+            );
+        }
+        if (query.plannedAtFrom || query.plannedAtTo) {
+            items = items.filter((item) =>
+                isInDateRange(
+                    item.plannedAt,
+                    query.plannedAtFrom,
+                    query.plannedAtTo,
+                ),
             );
         }
 

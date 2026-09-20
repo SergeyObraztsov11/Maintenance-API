@@ -5,6 +5,7 @@ import { equipmentRepository } from "../repositories/equipmentRepository.js";
 import { NotFoundError } from "../errors/NotFoundError.js";
 import { ConflictError } from "../errors/ConflictError.js";
 import { requestRepository } from "../repositories/requestRepository.js";
+import { isInDateRange } from "../utils/dateRange.js";
 
 export const equipmentService = {
     async list(query = {}) {
@@ -15,6 +16,24 @@ export const equipmentService = {
         }
         if (query.type) {
             items = items.filter((item) => item.type === query.type);
+        }
+        if (query.installedAtFrom || query.installedAtTo) {
+            items = items.filter((item) =>
+                isInDateRange(
+                    item.installedAt,
+                    query.installedAtFrom,
+                    query.installedAtTo,
+                ),
+            );
+        }
+        if (query.createdAtFrom || query.createdAtTo) {
+            items = items.filter((item) =>
+                isInDateRange(
+                    item.createdAt,
+                    query.createdAtFrom,
+                    query.createdAtTo,
+                ),
+            );
         }
 
         const sortBy = query.sortBy || "createdAt";

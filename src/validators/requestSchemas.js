@@ -3,6 +3,12 @@ import { z } from "zod";
 const priorities = ["low", "medium", "high", "critical"];
 const statuses = ["new", "in_progress", "done", "rejected"];
 
+const isoDateString = z
+    .string()
+    .refine((value) => !Number.isNaN(Date.parse(value)), {
+        message: "Must be a valid ISO date or date-time",
+    });
+
 export const requestIdParamsSchema = z.object({
     id: z.string().uuid(),
 });
@@ -12,6 +18,10 @@ export const requestListQuerySchema = z
         status: z.enum(statuses).optional(),
         priority: z.enum(priorities).optional(),
         equipmentId: z.string().uuid().optional(),
+        createdAtFrom: isoDateString.optional(),
+        createdAtTo: isoDateString.optional(),
+        plannedAtFrom: isoDateString.optional(),
+        plannedAtTo: isoDateString.optional(),
         sortBy: z
             .enum([
                 "title",
