@@ -4,7 +4,7 @@ import { BaseError } from "../errors/BaseError.js";
 import { config } from "../config/index.js";
 import { logger } from "../logger/index.js";
 
-export function errorHandler(err, req, res, next) {
+export function errorHandler(err, req, res, _next) {
     const statusCode = err instanceof BaseError ? err.statusCode : 500;
     const code = err instanceof BaseError ? err.code : "INTERNAL_ERROR";
     const message =
