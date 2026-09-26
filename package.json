@@ -21,10 +21,8 @@
     "db:migrate:undo": "sequelize-cli db:migrate:undo",
     "db:migrate:undo:all": "sequelize-cli db:migrate:undo:all",
     "db:show-tables": "docker compose exec db psql -U maintenance -d maintenance -c \"\\dt\"",
-    "db:show-table-sites": "docker compose exec db psql -U maintenance -d maintenance -c \"\\d sites\"",
-    "db:show-table-sites-data": "docker compose exec db psql -U maintenance -d maintenance -c \"SELECT * FROM sites;\"",
-    "db:show-table-equipment": "docker compose exec db psql -U maintenance -d maintenance -c \"\\d equipment\"",
-    "db:show-table-equipment-data": "docker compose exec db psql -U maintenance -d maintenance -c \"SELECT * FROM equipment;\""
+    "db:show-table": "node src/scripts/dbTable.js structure",
+    "db:show-table-data": "node src/scripts/dbTable.js data"
   },
   "keywords": [],
   "author": "",
