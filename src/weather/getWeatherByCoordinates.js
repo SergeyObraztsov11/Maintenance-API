@@ -12,6 +12,8 @@ function buildUrl(latitude, longitude, days) {
     );
     url.searchParams.set("forecast_days", String(days));
     url.searchParams.set("timezone", "auto");
+    // Match WEATHER_WIND_MAX_MS (m/s); Open-Meteo default is km/h
+    url.searchParams.set("wind_speed_unit", "ms");
     return url;
 }
 

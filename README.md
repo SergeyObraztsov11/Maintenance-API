@@ -57,7 +57,7 @@ npm run fix             # lint + format (исправление)
 | `NODE_ENV` | `development` | Режим (`production` скрывает внутренние сообщения ошибок) |
 | `CORS_ORIGINS` | `http://localhost:5500` | Разрешённые origin через запятую |
 | `RATE_LIMIT_WINDOW_MS` | `60000` | Окно rate limit, мс |
-| `RATE_LIMIT_MAX` | `3` | Максимум запросов к `/api` за окно |
+| `RATE_LIMIT_MAX` | `100` | Максимум запросов к `/api` за окно |
 | `REQUEST_TIMEOUT_MS` | `5000` | Таймаут запроса к погодному API |
 | `FORECAST_BASE_URL` | `https://api.open-meteo.com` | Базовый URL прогноза |
 | `WEATHER_WIND_MAX_MS` | `12` | Порог ветра (м/с) для наружных работ |
@@ -206,7 +206,8 @@ in_progress -> rejected
 `GET /api/equipment/{id}/weather?days=3`
 
 В ответе: координаты, правила пригодности из env, прогноз по дням с флагом `suitableForOutdoorWork`.  
-День пригоден, если осадки ≤ `WEATHER_PRECIPITATION_MAX_MM` и ветер ≤ `WEATHER_WIND_MAX_MS`.
+День пригоден, если осадки ≤ `WEATHER_PRECIPITATION_MAX_MM` и ветер ≤ `WEATHER_WIND_MAX_MS`.  
+Скорость ветра запрашивается у Open-Meteo в м/с (`wind_speed_unit=ms`), чтобы совпадать с порогом в env.
 
 ### Ошибка валидации
 

@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Maintenance API",
-    "description": "Case 2: equipment and maintenance requests REST API.\n\nVariables: baseUrl, equipmentId, requestId, serialNumber.\n\nRun Health → Create equipment → Create request, then other requests. Negative folder covers 422/404/409/429.",
+    "description": "Case 2: equipment and maintenance requests REST API.\n\nVariables: baseUrl, apiKey, equipmentId, requestId, serialNumber.\n\nRun order: Health → Equipment (without delete) → Requests (ends with DELETE request, then DELETE equipment) → Negative.\nFor 429 test: temporarily set RATE_LIMIT_MAX=3 and exceed the limit.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -232,28 +232,6 @@
             "header": [],
             "url": "{{baseUrl}}/api/equipment/{{equipmentId}}/requests"
           }
-        },
-        {
-          "name": "DELETE equipment",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 204 or 409', () => {",
-                  "  pm.expect([204, 409]).to.include(pm.response.code);",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "DELETE",
-            "header": [],
-            "url": "{{baseUrl}}/api/equipment/{{equipmentId}}",
-            "description": "204 if no open requests; 409 if open requests exist."
-          }
         }
       ]
     },
@@ -418,6 +396,28 @@
             "header": [],
             "url": "{{baseUrl}}/api/requests/{{requestId}}"
           }
+        },
+        {
+          "name": "DELETE equipment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 204 or 409', () => {",
+                  "  pm.expect([204, 409]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/equipment/{{equipmentId}}",
+            "description": "Run after DELETE request. 204 if no open requests; 409 if open requests exist."
+          }
         }
       ]
     },
@@ -474,7 +474,7 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/api/equipment/11111111-1111-1111-1111-111111111110"
+            "url": "{{baseUrl}}/api/equipment/11111111-1111-4111-8111-111111111111"
           }
         },
         {
@@ -487,10 +487,14 @@
                 "exec": [
                   "const sn = 'SN-DUP-' + Date.now();",
                   "pm.collectionVariables.set('dupSerial', sn);",
+                  "const baseUrl = pm.variables.get('baseUrl');",
                   "pm.sendRequest({",
-                  "  url: pm.collectionVariables.get('baseUrl') + '/api/equipment',",
+                  "  url: baseUrl + '/api/equipment',",
                   "  method: 'POST',",
-                  "  header: { 'Content-Type': 'application/json' },",
+                  "  header: {",
+                  "    'Content-Type': 'application/json',",
+                  "    'X-API-Key': pm.variables.get('apiKey')",
+                  "  },",
                   "  body: {",
                   "    mode: 'raw',",
                   "    raw: JSON.stringify({",
@@ -570,13 +574,11 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status is 429 when limit exceeded', () => {",
-                  "  pm.expect([200, 429]).to.include(pm.response.code);",
+                  "  pm.expect(pm.response.code).to.eql(429);",
                   "});",
-                  "if (pm.response.code === 429) {",
-                  "  pm.test('Error code RATE_LIMIT_EXCEEDED', () => {",
-                  "    pm.expect(pm.response.json().error.code).to.eql('RATE_LIMIT_EXCEEDED');",
-                  "  });",
-                  "}"
+                  "pm.test('Error code RATE_LIMIT_EXCEEDED', () => {",
+                  "  pm.expect(pm.response.json().error.code).to.eql('RATE_LIMIT_EXCEEDED');",
+                  "});"
                 ]
               }
             }
@@ -585,7 +587,7 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/health",
-            "description": "Set RATE_LIMIT_MAX=3, restart server, send this request 4+ times quickly (or use Collection Runner)."
+            "description": "Temporarily set RATE_LIMIT_MAX=3, restart server, then send this request until limit is exceeded (4+ times). Expects 429 only."
           }
         }
       ]

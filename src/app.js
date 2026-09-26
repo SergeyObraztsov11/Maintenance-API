@@ -13,6 +13,9 @@ import { config } from "./config/index.js";
 
 const app = express();
 
+// requestId before body parser so JSON/413 errors still carry requestId
+app.use(requestId);
+app.use(requestLogger);
 app.use(express.json({ limit: "100kb" }));
 app.use(helmet());
 app.use(
@@ -21,8 +24,6 @@ app.use(
         methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     }),
 );
-app.use(requestId);
-app.use(requestLogger);
 
 const apiRateLimit = rateLimit({
     windowMs: config.rateLimitWindowMs,
