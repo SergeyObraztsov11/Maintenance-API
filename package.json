@@ -16,7 +16,15 @@
     "docker:build": "docker build -t maintenance-api .",
     "docker:up": "docker compose up --build -d",
     "docker:down": "docker compose down",
-    "docker:logs": "docker compose logs -f api"
+    "docker:logs": "docker compose logs -f api",
+    "db:migrate": "sequelize-cli db:migrate",
+    "db:migrate:undo": "sequelize-cli db:migrate:undo",
+    "db:migrate:undo:all": "sequelize-cli db:migrate:undo:all",
+    "db:show-tables": "docker compose exec db psql -U maintenance -d maintenance -c \"\\dt\"",
+    "db:show-table-sites": "docker compose exec db psql -U maintenance -d maintenance -c \"\\d sites\"",
+    "db:show-table-sites-data": "docker compose exec db psql -U maintenance -d maintenance -c \"SELECT * FROM sites;\"",
+    "db:show-table-equipment": "docker compose exec db psql -U maintenance -d maintenance -c \"\\d equipment\"",
+    "db:show-table-equipment-data": "docker compose exec db psql -U maintenance -d maintenance -c \"SELECT * FROM equipment;\""
   },
   "keywords": [],
   "author": "",
@@ -38,6 +46,7 @@
     "eslint": "^10.11.0",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.12.0",
-    "prettier": "^3.9.8"
+    "prettier": "^3.9.8",
+    "sequelize-cli": "^6.6.5"
   }
 }
