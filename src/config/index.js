@@ -15,4 +15,13 @@ export const config = {
         Number(process.env.WEATHER_PRECIPITATION_MAX_MM) || 0.1,
     dataDir: process.env.DATA_DIR || "data",
     apiKey: process.env.API_KEY || "",
+    db: {
+        host: process.env.DB_HOST || "localhost",
+        port: Number(process.env.DB_PORT) || 5432,
+        name: process.env.DB_NAME || "maintenance",
+        user: process.env.DB_USER || "maintenance",
+        password: process.env.DB_PASSWORD || "",
+        poolMin: Number(process.env.DB_POOL_MIN) || 0,
+        poolMax: Number(process.env.DB_POOL_MAX) || 10,
+    },
 };
