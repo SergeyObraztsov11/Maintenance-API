@@ -42,30 +42,27 @@ export const equipmentListQuerySchema = z
     })
     .strict();
 
-export const createEquipmentBodySchema = z
-    .object({
-        name: z.string().min(3).max(100),
-        type: z.enum(equipmentTypes),
-        serialNumber: z.string().min(1),
-        location: z.object({
-            lat: z.number().min(-90).max(90),
-            lon: z.number().min(-180).max(180),
-        }),
-        status: z.enum(equipmentStatuses),
-        installedAt: z
-            .string()
-            .refine(
-                (value) =>
-                    !Number.isNaN(Date.parse(value)) &&
-                    Date.parse(value) <= Date.now(),
-                {
-                    message:
-                        "installedAt must be a valid ISO date not in the future",
-                },
-            ),
-    })
-    .strict();
+// Unknown body fields are stripped (assignment: ignore, do not 422).
+export const createEquipmentBodySchema = z.object({
+    name: z.string().min(3).max(100),
+    type: z.enum(equipmentTypes),
+    serialNumber: z.string().min(1),
+    location: z.object({
+        lat: z.number().min(-90).max(90),
+        lon: z.number().min(-180).max(180),
+    }),
+    status: z.enum(equipmentStatuses),
+    installedAt: z
+        .string()
+        .refine(
+            (value) =>
+                !Number.isNaN(Date.parse(value)) &&
+                Date.parse(value) <= Date.now(),
+            {
+                message:
+                    "installedAt must be a valid ISO date not in the future",
+            },
+        ),
+});
 
-export const updateEquipmentBodySchema = createEquipmentBodySchema
-    .partial()
-    .strict();
+export const updateEquipmentBodySchema = createEquipmentBodySchema.partial();
