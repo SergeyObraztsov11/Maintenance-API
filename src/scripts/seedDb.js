@@ -96,7 +96,7 @@ async function seed() {
 
     const equipmentList = [eq1, eq2, eq3, eq4, eq5, eq6];
 
-    // 3) Passports 
+    // 3) Passports
     for (const eq of equipmentList) {
         await EquipmentPassport.create({
             equipmentId: eq.id,
