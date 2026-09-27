@@ -1,22 +1,61 @@
 {
   "info": {
     "name": "Maintenance API",
-    "description": "Case 2: equipment and maintenance requests REST API.\n\nVariables: baseUrl, apiKey, equipmentId, requestId, serialNumber.\n\nRun order: Health → Equipment (without delete) → Requests (ends with DELETE request, then DELETE equipment) → Negative.\nFor 429 test: temporarily set RATE_LIMIT_MAX=3 and exceed the limit.",
+    "description": "Case 3: Maintenance API (PostgreSQL).\n\nVariables: baseUrl, apiKey, equipmentId, requestId, serialNumber, technicianId, technicianId2, siteId.\n\nSuggested order: Health → Setup seed IDs → Equipment → Requests (assignees before in_progress) → Reports → Negative.\nRequires: docker db up, migrate, seed, npm start.\nFor 429: temporarily set RATE_LIMIT_MAX=3.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:3000" },
-    { "key": "apiKey", "value": "dev-api-key-change-me" },
-    { "key": "equipmentId", "value": "" },
-    { "key": "requestId", "value": "" },
-    { "key": "serialNumber", "value": "SN-POSTMAN-001" }
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "apiKey",
+      "value": "dev-api-key-change-me"
+    },
+    {
+      "key": "equipmentId",
+      "value": ""
+    },
+    {
+      "key": "requestId",
+      "value": ""
+    },
+    {
+      "key": "serialNumber",
+      "value": "SN-POSTMAN-001"
+    },
+    {
+      "key": "technicianId",
+      "value": ""
+    },
+    {
+      "key": "technicianId2",
+      "value": ""
+    },
+    {
+      "key": "siteId",
+      "value": ""
+    }
   ],
   "auth": {
     "type": "apikey",
     "apikey": [
-      { "key": "key", "value": "X-API-Key", "type": "string" },
-      { "key": "value", "value": "{{apiKey}}", "type": "string" },
-      { "key": "in", "value": "header", "type": "string" }
+      {
+        "key": "key",
+        "value": "X-API-Key",
+        "type": "string"
+      },
+      {
+        "key": "value",
+        "value": "{{apiKey}}",
+        "type": "string"
+      },
+      {
+        "key": "in",
+        "value": "header",
+        "type": "string"
+      }
     ]
   },
   "item": [
@@ -44,6 +83,74 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/health"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Setup",
+      "item": [
+        {
+          "name": "Resolve seed IDs (site + technicians)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const eqBody = pm.response.json();",
+                  "pm.expect(eqBody.data).to.be.an(\"array\").that.is.not.empty;",
+                  "pm.collectionVariables.set(\"siteId\", eqBody.data[0].siteId);",
+                  "pm.sendRequest({",
+                  "  url: pm.collectionVariables.get(\"baseUrl\") + \"/api/requests?page=1&limit=50\",",
+                  "  method: \"GET\",",
+                  "  header: { \"X-API-Key\": pm.collectionVariables.get(\"apiKey\") }",
+                  "}, (err, res) => {",
+                  "  pm.test(\"Loaded technicians from requests\", () => {",
+                  "    pm.expect(err).to.eql(null);",
+                  "    const rows = res.json().data || [];",
+                  "    const ids = [];",
+                  "    for (const r of rows) {",
+                  "      for (const a of r.assignees || []) {",
+                  "        if (a.technician && a.technician.id && !ids.includes(a.technician.id)) {",
+                  "          ids.push(a.technician.id);",
+                  "        }",
+                  "      }",
+                  "    }",
+                  "    pm.expect(ids.length).to.be.at.least(1);",
+                  "    pm.collectionVariables.set(\"technicianId\", ids[0]);",
+                  "    pm.collectionVariables.set(\"technicianId2\", ids[1] || ids[0]);",
+                  "  });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/equipment?page=1&limit=5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "equipment"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            },
+            "description": "Requires npm run seed. Saves siteId and technician IDs from seeded data."
           }
         }
       ]
@@ -85,7 +192,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -118,13 +228,30 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/equipment?page=1&limit=10&sortBy=createdAt&sortOrder=desc",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "equipment"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "equipment"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "10" },
-                { "key": "sortBy", "value": "createdAt" },
-                { "key": "sortOrder", "value": "desc" }
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "createdAt"
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "desc"
+                }
               ]
             }
           }
@@ -171,7 +298,10 @@
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -203,9 +333,21 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/equipment/{{equipmentId}}/weather?days=3",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "equipment", "{{equipmentId}}", "weather"],
-              "query": [{ "key": "days", "value": "3" }]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "equipment",
+                "{{equipmentId}}",
+                "weather"
+              ],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "3"
+                }
+              ]
             }
           }
         },
@@ -259,7 +401,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -291,11 +436,22 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/requests?page=1&limit=10",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "requests"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "requests"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "10" }
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
               ]
             }
           }
@@ -341,13 +497,79 @@
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"priority\": \"high\"\n}"
             },
             "url": "{{baseUrl}}/api/requests/{{requestId}}"
+          }
+        },
+        {
+          "name": "POST add assignee (lead)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test(\"Assignee role is lead\", () => {",
+                  "  pm.expect(pm.response.json().data.role).to.eql(\"lead\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"technicianId\": \"{{technicianId}}\",\n  \"role\": \"lead\",\n  \"hours\": 4\n}"
+            },
+            "url": "{{baseUrl}}/api/requests/{{requestId}}/assignees"
+          }
+        },
+        {
+          "name": "POST add assignee (member)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test(\"Assignee role is member\", () => {",
+                  "  pm.expect(pm.response.json().data.role).to.eql(\"member\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"technicianId\": \"{{technicianId2}}\",\n  \"role\": \"member\",\n  \"hours\": 2\n}"
+            },
+            "url": "{{baseUrl}}/api/requests/{{requestId}}/assignees",
+            "description": "Needs a second distinct technicianId from Setup. If seed has only one tech on assignees, set technicianId2 manually."
           }
         },
         {
@@ -369,13 +591,59 @@
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"status\": \"in_progress\"\n}"
             },
             "url": "{{baseUrl}}/api/requests/{{requestId}}/status"
+          }
+        },
+        {
+          "name": "GET request status history",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"History is an array\", () => {",
+                  "  const data = pm.response.json().data;",
+                  "  pm.expect(data).to.be.an(\"array\");",
+                  "  pm.expect(data.length).to.be.at.least(1);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/requests/{{requestId}}/history"
+          }
+        },
+        {
+          "name": "DELETE assignee (member)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/requests/{{requestId}}/assignees/{{technicianId2}}"
           }
         },
         {
@@ -422,6 +690,58 @@
       ]
     },
     {
+      "name": "Reports",
+      "item": [
+        {
+          "name": "GET site summary",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"Summary shape\", () => {",
+                  "  const d = pm.response.json().data;",
+                  "  pm.expect(d).to.have.property(\"site\");",
+                  "  pm.expect(d).to.have.property(\"equipmentTotal\");",
+                  "  pm.expect(d).to.have.property(\"requestsTotal\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/reports/sites/{{siteId}}/summary"
+          }
+        },
+        {
+          "name": "GET technicians workload",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"Workload is array\", () => {",
+                  "  pm.expect(pm.response.json().data).to.be.an(\"array\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/reports/technicians/workload"
+          }
+        }
+      ]
+    },
+    {
       "name": "Negative",
       "item": [
         {
@@ -446,7 +766,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -526,7 +849,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -555,7 +881,10 @@
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -588,6 +917,217 @@
             "header": [],
             "url": "{{baseUrl}}/api/health",
             "description": "Temporarily set RATE_LIMIT_MAX=3, restart server, then send this request until limit is exceeded (4+ times). Expects 429 only."
+          }
+        },
+        {
+          "name": "409 in_progress without assignees",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const baseUrl = pm.collectionVariables.get(\"baseUrl\");",
+                  "const apiKey = pm.collectionVariables.get(\"apiKey\");",
+                  "const equipmentId = pm.collectionVariables.get(\"equipmentId\");",
+                  "pm.sendRequest({",
+                  "  url: baseUrl + \"/api/requests\",",
+                  "  method: \"POST\",",
+                  "  header: { \"Content-Type\": \"application/json\", \"X-API-Key\": apiKey },",
+                  "  body: {",
+                  "    mode: \"raw\",",
+                  "    raw: JSON.stringify({",
+                  "      equipmentId,",
+                  "      title: \"No crew request \" + Date.now(),",
+                  "      description: \"For 409 in_progress without assignees\",",
+                  "      priority: \"low\"",
+                  "    })",
+                  "  }",
+                  "}, (err, res) => {",
+                  "  if (!err && res.code === 201) {",
+                  "    pm.collectionVariables.set(\"lonelyRequestId\", res.json().data.id);",
+                  "  }",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test(\"Error code CONFLICT\", () => {",
+                  "  pm.expect(pm.response.json().error.code).to.eql(\"CONFLICT\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"in_progress\"\n}"
+            },
+            "url": "{{baseUrl}}/api/requests/{{lonelyRequestId}}/status",
+            "description": "Creates a fresh request in prerequest, then tries in_progress without assignees."
+          }
+        },
+        {
+          "name": "404 assignee unknown technician",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));",
+                  "pm.test(\"Error code NOT_FOUND\", () => {",
+                  "  pm.expect(pm.response.json().error.code).to.eql(\"NOT_FOUND\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"technicianId\": \"aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee\",\n  \"role\": \"member\",\n  \"hours\": 1\n}"
+            },
+            "url": "{{baseUrl}}/api/requests/{{requestId}}/assignees",
+            "description": "Uses requestId from happy path. Unknown technician → 404."
+          }
+        },
+        {
+          "name": "409 duplicate assignee",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test(\"Error code CONFLICT\", () => {",
+                  "  pm.expect(pm.response.json().error.code).to.eql(\"CONFLICT\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"technicianId\": \"{{technicianId}}\",\n  \"role\": \"member\",\n  \"hours\": 1\n}"
+            },
+            "url": "{{baseUrl}}/api/requests/{{requestId}}/assignees",
+            "description": "Re-assigns the same technician who is already on requestId."
+          }
+        },
+        {
+          "name": "409 second lead on same request",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test(\"Error code CONFLICT\", () => {",
+                  "  pm.expect(pm.response.json().error.code).to.eql(\"CONFLICT\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"technicianId\": \"{{technicianId2}}\",\n  \"role\": \"lead\",\n  \"hours\": 1\n}"
+            },
+            "url": "{{baseUrl}}/api/requests/{{requestId}}/assignees",
+            "description": "API returns 409 if a lead already exists. PDF batch-replace without lead is 422; current API assigns one-by-one."
+          }
+        },
+        {
+          "name": "422 assignee invalid role",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 422', () => pm.response.to.have.status(422));",
+                  "pm.test(\"Error code VALIDATION_ERROR\", () => {",
+                  "  pm.expect(pm.response.json().error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"technicianId\": \"{{technicianId}}\",\n  \"role\": \"boss\",\n  \"hours\": 1\n}"
+            },
+            "url": "{{baseUrl}}/api/requests/{{requestId}}/assignees",
+            "description": "Invalid role enum → 422 validation."
+          }
+        },
+        {
+          "name": "404 site summary not found",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));",
+                  "pm.test(\"Error code NOT_FOUND\", () => {",
+                  "  pm.expect(pm.response.json().error.code).to.eql(\"NOT_FOUND\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/reports/sites/11111111-1111-4111-8111-111111111111/summary"
           }
         }
       ]

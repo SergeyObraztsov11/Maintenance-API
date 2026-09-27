@@ -365,8 +365,55 @@ in_progress -> rejected
 
 Коллекция: [`docs/postman/maintenance-api.postman_collection.json`](docs/postman/maintenance-api.postman_collection.json)
 
-Import в Postman -> `npm start` -> сначала **POST create equipment**, затем **POST create request**.  
-В коллекции есть негативные сценарии (422 / 404 / 409 / 429) и `pm.test`.
+Import в Postman → `docker compose up -d db` → `npm run db:migrate` → `npm run seed` → `npm start`.
+
+Порядок папок: **Health** → **Setup** → **Equipment** → **Requests** → **Reports** → **Negative**.
+
+### Сценарии в коллекции
+
+**Health**
+- GET health
+
+**Setup**
+- Resolve seed IDs (сохраняет `siteId`, `technicianId`, `technicianId2` из сидов)
+
+**Equipment**
+- POST create equipment
+- GET list equipment
+- GET equipment by id
+- PATCH update equipment
+- GET equipment weather
+- GET equipment requests
+
+**Requests**
+- POST create request
+- GET list requests
+- GET request by id
+- PATCH update request
+- POST add assignee (lead)
+- POST add assignee (member)
+- PATCH change status to `in_progress`
+- GET request status history
+- DELETE assignee (member)
+- DELETE request
+- DELETE equipment
+
+**Reports**
+- GET site summary (`/api/reports/sites/:id/summary`)
+- GET technicians workload (`/api/reports/technicians/workload`)
+
+**Negative**
+- 422 validation error — short name
+- 404 equipment not found
+- 409 duplicate serial number
+- 409 invalid status transition
+- 429 rate limit
+- 409 `in_progress` without assignees
+- 404 assignee unknown technician
+- 409 duplicate assignee
+- 409 second lead on same request
+- 422 assignee invalid role
+- 404 site summary not found
 
 ## Демо-данные
 
