@@ -26,7 +26,6 @@ if (!allowed.has(table)) {
     process.exit(1);
 }
 
-// Use SQL instead of psql \d meta-commands: more reliable on Windows + npm args
 const sql =
     mode === "data"
         ? `SELECT * FROM "${table}";`
