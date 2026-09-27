@@ -74,6 +74,15 @@ export const requestService = {
                 `Cannot change status from ${request.status} to ${status}`,
             );
         }
+
+        if (status === "in_progress") {
+            const count = await requestRepository.countAssignees(id);
+            if (count === 0) {
+                throw new ConflictError(
+                    "Cannot set in_progress without assignees",
+                );
+            }
+        }
         const updated = await requestRepository.changeStatus(id, {
             status,
             changedBy: "api",
