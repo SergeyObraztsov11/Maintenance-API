@@ -9,4 +9,8 @@ export const reportService = {
         }
         return summary;
     },
+    async getTechniciansWorkload() {
+        const workload = await reportRepository.getTechniciansWorkload();
+        return workload;
+    },
 };

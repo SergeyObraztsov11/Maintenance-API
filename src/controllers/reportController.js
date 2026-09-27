@@ -9,4 +9,12 @@ export const reportController = {
             next(error);
         }
     },
+    async getTechniciansWorkload(req, res, next) {
+        try {
+            const data = await reportService.getTechniciansWorkload();
+            res.status(200).json({ data });
+        } catch (error) {
+            next(error);
+        }
+    },
 };

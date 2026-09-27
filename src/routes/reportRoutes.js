@@ -10,5 +10,5 @@ router.get(
     validate({ params: siteIdParamsSchema }),
     reportController.getSiteSummary,
 );
-
+router.get("/technicians/workload", reportController.getTechniciansWorkload);
 export default router;

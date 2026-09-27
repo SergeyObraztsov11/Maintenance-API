@@ -60,4 +60,23 @@ export const reportRepository = {
             requestsByStatus,
         };
     },
+    async getTechniciansWorkload() {
+        const rows = await sequelize.query(
+            `
+            SELECT
+                t.id,
+                t.full_name AS "fullName",
+                t.specialization,
+                t.employee_number AS "employeeNumber",
+                COUNT(ra.id)::int AS "assignmentsCount",
+                COALESCE(SUM(ra.hours), 0)::float AS "totalHours"
+            FROM technicians AS t
+            LEFT JOIN request_assignees AS ra ON ra.technician_id = t.id
+            GROUP BY t.id, t.full_name, t.specialization, t.employee_number
+            ORDER BY "totalHours" DESC, t.full_name ASC
+            `,
+            { type: QueryTypes.SELECT },
+        );
+        return rows;
+    },
 };
