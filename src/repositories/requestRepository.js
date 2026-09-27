@@ -1,9 +1,11 @@
 import {
     MaintenanceRequest,
     RequestAssignee,
+    RequestStatusHistory,
     Technician,
 } from "../models/index.js";
 import { Op } from "sequelize";
+import { sequelize } from "../db/index.js";
 
 function toNumber(value) {
     return value === null || value === undefined ? value : Number(value);
@@ -171,19 +173,33 @@ export const requestRepository = {
     },
 
     async create(request) {
-        await MaintenanceRequest.create({
-            id: request.id,
-            equipmentId: request.equipmentId,
-            title: request.title,
-            description: request.description ?? "",
-            priority: request.priority,
-            status: request.status ?? "new",
-            plannedAt: request.plannedAt ?? new Date().toISOString(),
-            author: request.author ?? "api",
-            createdAt: request.createdAt,
-            updatedAt: request.updatedAt,
+        await sequelize.transaction(async (t) => {
+            await MaintenanceRequest.create(
+                {
+                    id: request.id,
+                    equipmentId: request.equipmentId,
+                    title: request.title,
+                    description: request.description ?? "",
+                    priority: request.priority,
+                    status: request.status ?? "new",
+                    plannedAt: request.plannedAt ?? new Date().toISOString(),
+                    author: request.author ?? "api",
+                    createdAt: request.createdAt,
+                    updatedAt: request.updatedAt,
+                },
+                { transaction: t },
+            );
+            await RequestStatusHistory.create(
+                {
+                    requestId: request.id,
+                    fromStatus: null,
+                    toStatus: request.status ?? "new",
+                    changedBy: request.author ?? "api",
+                    comment: "Created",
+                },
+                { transaction: t },
+            );
         });
-
         return this.findById(request.id);
     },
 
@@ -203,5 +219,30 @@ export const requestRepository = {
     async remove(id) {
         const deleted = await MaintenanceRequest.destroy({ where: { id } });
         return deleted > 0;
+    },
+    async changeStatus(id, { status, changedBy, comment }) {
+        await sequelize.transaction(async (t) => {
+            const row = await MaintenanceRequest.findByPk(id, {
+                transaction: t,
+                lock: t.LOCK.UPDATE,
+            });
+            if (!row) return null;
+            const fromStatus = row.status;
+            await row.update(
+                { status, updatedAt: new Date().toISOString() },
+                { transaction: t },
+            );
+            await RequestStatusHistory.create(
+                {
+                    requestId: id,
+                    fromStatus,
+                    toStatus: status,
+                    changedBy: changedBy,
+                    comment: comment,
+                },
+                { transaction: t },
+            );
+        });
+        return this.findById(id);
     },
 };

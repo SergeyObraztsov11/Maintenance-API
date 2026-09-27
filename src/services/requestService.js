@@ -65,23 +65,21 @@ export const requestService = {
 
         return requestRepository.update(id, patch);
     },
-
     async changeStatus(id, status) {
         const request = await this.getById(id);
         const allowed = ALLOWED_TRANSITIONS[request.status] ?? [];
-
         if (!allowed.includes(status)) {
             throw new ConflictError(
                 `Cannot change status from ${request.status} to ${status}`,
             );
         }
-
-        return requestRepository.update(id, {
+        const updated = await requestRepository.changeStatus(id, {
             status,
-            updatedAt: new Date().toISOString(),
+            changedBy: "api",
+            comment: null,
         });
+        return updated;
     },
-
     async remove(id) {
         await this.getById(id);
         await requestRepository.remove(id);
