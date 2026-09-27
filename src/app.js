@@ -4,6 +4,7 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import equipmentRoutes from "./routes/equipmentRoutes.js";
 import requestRoutes from "./routes/requestRoutes.js";
+import reportRoutes from "./routes/reportRoutes.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
 import { notFoundHandler } from "./middlewares/notFoundHandler.js";
 import { requestLogger } from "./middlewares/requestLogger.js";
@@ -51,7 +52,7 @@ app.get("/api/health", (req, res) => {
 
 app.use("/api/equipment", equipmentRoutes);
 app.use("/api/requests", requestRoutes);
-
+app.use("/api/reports", reportRoutes);
 app.use(notFoundHandler);
 app.use(errorHandler);
 
