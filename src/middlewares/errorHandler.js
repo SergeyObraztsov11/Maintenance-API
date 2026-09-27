@@ -1,6 +1,8 @@
 // Единый ответ об ошибке. requestId появляется после middleware requestId.
 
 import { BaseError } from "../errors/BaseError.js";
+import { ConflictError } from "../errors/ConflictError.js";
+import { NotFoundError } from "../errors/NotFoundError.js";
 import { config } from "../config/index.js";
 import { logger } from "../logger/index.js";
 
@@ -20,9 +22,38 @@ function normalizeBodyParserError(err) {
     return null;
 }
 
+function mapSequelizeError(err) {
+    if (err?.name === "SequelizeUniqueConstraintError") {
+        const field = err.errors?.[0]?.path;
+        const message = field
+            ? `Value for "${field}" already exists`
+            : "Unique constraint violated";
+        return new ConflictError(message);
+    }
+
+    if (err?.name === "SequelizeForeignKeyConstraintError") {
+        const message = String(err.parent?.detail ?? err.message ?? "");
+        const isDeleteRestrict =
+            /is still referenced|update or delete/i.test(message) ||
+            err.parent?.code === "23503" &&
+                /delete/i.test(String(err.parent?.message ?? err.message ?? ""));
+
+        if (isDeleteRestrict) {
+            return new ConflictError(
+                "Cannot delete: related records still exist",
+            );
+        }
+
+        return new NotFoundError("Related resource not found");
+    }
+
+    return null;
+}
+
 export function errorHandler(err, req, res, _next) {
-    const mapped = normalizeBodyParserError(err);
-    const error = mapped ?? err;
+    const mapped =
+        normalizeBodyParserError(err) ?? mapSequelizeError(err) ?? err;
+    const error = mapped;
 
     const statusCode = error instanceof BaseError ? error.statusCode : 500;
     const code = error instanceof BaseError ? error.code : "INTERNAL_ERROR";

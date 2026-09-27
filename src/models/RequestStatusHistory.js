@@ -15,12 +15,12 @@ export const RequestStatusHistory = sequelize.define(
             field: "request_id",
         },
         fromStatus: {
-            type: DataTypes.ENUM("new", "in_progress", "done"),
+            type: DataTypes.ENUM("new", "in_progress", "done", "rejected"),
             allowNull: true,
             field: "from_status",
         },
         toStatus: {
-            type: DataTypes.ENUM("new", "in_progress", "done"),
+            type: DataTypes.ENUM("new", "in_progress", "done", "rejected"),
             allowNull: false,
             field: "to_status",
         },

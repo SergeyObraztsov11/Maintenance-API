@@ -9,8 +9,12 @@ export const reportService = {
         }
         return summary;
     },
+
+    async getEquipmentLoad(query = {}) {
+        return reportRepository.getEquipmentLoad(query);
+    },
+
     async getTechniciansWorkload() {
-        const workload = await reportRepository.getTechniciansWorkload();
-        return workload;
+        return reportRepository.getTechniciansWorkload();
     },
 };

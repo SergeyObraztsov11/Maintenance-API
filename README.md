@@ -142,9 +142,11 @@ npm run seed
 | PATCH | `/api/requests/:id/status` | Смена статуса с проверкой перехода |
 | DELETE | `/api/requests/:id` | Удаление заявки |
 | GET | `/api/requests/:id/history` | Журнал изменений статуса |
-| POST | `/api/requests/:id/assignees` | Назначение специалиста на заявку |
+| POST | `/api/requests/:id/assignees` | Назначение бригады (замена списка) |
 | DELETE | `/api/requests/:id/assignees/:technicianId` | Снятие специалиста |
-| GET | `/api/reports/sites/:id/summary` | Сводка по площадке |
+| GET | `/api/sites/:id/summary` | Сводка по площадке |
+| GET | `/api/reports/sites/:id/summary` | То же (alias) |
+| GET | `/api/reports/equipment-load` | Нагрузка на оборудование |
 | GET | `/api/reports/technicians/workload` | Нагрузка специалистов |
 
 Query для списков (примеры): `status`, `type` / `priority`, `equipmentId`, `createdAtFrom`, `createdAtTo`, `installedAtFrom` / `installedAtTo` (equipment), `plannedAtFrom` / `plannedAtTo` (requests), `sortBy`, `sortOrder`, `page`, `limit`.  
@@ -227,8 +229,8 @@ in_progress -> rejected
 
 - смена статуса и запись в `request_status_history` выполняются в одной транзакции;
 - переход в `in_progress` без assignees запрещён (409);
-- на заявке допускается только один `lead`;
-- повторное назначение того же специалиста запрещено (409).
+- назначение бригады — одной транзакцией (полная замена списка), ровно один `lead` иначе 422;
+- повтор одного `technicianId` в списке запрещён (422).
 
 ## Формат ошибки
 
@@ -311,31 +313,49 @@ in_progress -> rejected
 День пригоден, если осадки ≤ `WEATHER_PRECIPITATION_MAX_MM` и ветер ≤ `WEATHER_WIND_MAX_MS`.  
 Скорость ветра запрашивается у Open-Meteo в м/с (`wind_speed_unit=ms`), чтобы совпадать с порогом в env.
 
-### Назначение специалиста
+### Назначение бригады
 
-`POST /api/requests/{id}/assignees`
+`POST /api/requests/{id}/assignees` — **полная замена** назначений в одной транзакции.
 
 ```json
-{ "technicianId": "...", "role": "lead", "hours": 4 }
+{
+  "assignees": [
+    { "technicianId": "...", "role": "lead", "hours": 4 },
+    { "technicianId": "...", "role": "member", "hours": 2 }
+  ]
+}
 ```
 
-`role`: `lead` \| `member`. На заявке только один `lead`. Повтор того же специалиста → **409**.
+В списке должен быть ровно один `lead`. Иначе → **422** и откат.  
+Несуществующий специалист → **404**.  
+`DELETE /api/requests/{id}/assignees/{technicianId}` — снять одного.
 
 ### Отчёты
 
-Оба отчёта считаются **raw SQL** с параметризованными подстановками (без конкатенации ввода в текст запроса).
+Отчёты считаются **raw SQL** с параметризованными подстановками (без конкатенации ввода в текст запроса).
 
-**Сводка по площадке** — `GET /api/reports/sites/{id}/summary`
+**Сводка по площадке** — `GET /api/sites/{id}/summary`  
+(alias: `GET /api/reports/sites/{id}/summary`)
 
 - данные площадки (`id`, `name`, `code`, `region`);
 - число единиц оборудования и разбивка по `status`;
-- число заявок по площадке и разбивка по `status`.
+- число заявок: разбивка по `status` и по `priority`;
+- `avgCloseTimeHours` — среднее время от создания заявки до первого перехода в `done` (часы; `null`, если закрытых нет).
 
 Несуществующая площадка → **404**.
 
+**Нагрузка на оборудование** — `GET /api/reports/equipment-load`
+
+Query (опционально): `from`, `to` (ISO, фильтр по `created_at` заявки), `minRequests` (HAVING, по умолчанию `0`).
+
+По каждой единице:
+- `requestsCount`, `closedRequestsCount`;
+- `totalPlannedHours` (сумма `request_assignees.hours`);
+- `lastServicedAt` (время последнего перехода заявки в `done`).
+
 **Нагрузка специалистов** — `GET /api/reports/technicians/workload`
 
-- по каждому специалисту: `assignmentsCount`, `totalHours` (сумма `request_assignees.hours`);
+- по каждому специалисту: `assignmentsCount`, `totalHours`;
 - сортировка по убыванию часов.
 
 ### Ошибка валидации
@@ -390,8 +410,7 @@ Import в Postman → `docker compose up -d db` → `npm run db:migrate` → `np
 - GET list requests
 - GET request by id
 - PATCH update request
-- POST add assignee (lead)
-- POST add assignee (member)
+- POST set assignees (lead + member)
 - PATCH change status to `in_progress`
 - GET request status history
 - DELETE assignee (member)
@@ -399,7 +418,8 @@ Import в Postman → `docker compose up -d db` → `npm run db:migrate` → `np
 - DELETE equipment
 
 **Reports**
-- GET site summary (`/api/reports/sites/:id/summary`)
+- GET site summary (`/api/sites/:id/summary`)
+- GET equipment load (`/api/reports/equipment-load`)
 - GET technicians workload (`/api/reports/technicians/workload`)
 
 **Negative**
@@ -410,8 +430,7 @@ Import в Postman → `docker compose up -d db` → `npm run db:migrate` → `np
 - 429 rate limit
 - 409 `in_progress` without assignees
 - 404 assignee unknown technician
-- 409 duplicate assignee
-- 409 second lead on same request
+- 422 assignees without lead
 - 422 assignee invalid role
 - 404 site summary not found
 

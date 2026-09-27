@@ -6,6 +6,7 @@ import {
 } from "../models/index.js";
 import { Op } from "sequelize";
 import { sequelize } from "../db/index.js";
+import { ValidationError } from "../errors/ValidationError.js";
 
 function toNumber(value) {
     return value === null || value === undefined ? value : Number(value);
@@ -262,20 +263,41 @@ export const requestRepository = {
         });
         return this.findById(id);
     },
-    async addAssignee(requestId, { technicianId, role, hours }) {
-        const row = await RequestAssignee.create({
-            requestId,
-            technicianId,
-            role,
-            hours: hours ?? 0,
+    async replaceAssignees(requestId, assignees) {
+        await sequelize.transaction(async (t) => {
+            await RequestAssignee.destroy({
+                where: { requestId },
+                transaction: t,
+            });
+
+            for (const item of assignees) {
+                await RequestAssignee.create(
+                    {
+                        requestId,
+                        technicianId: item.technicianId,
+                        role: item.role,
+                        hours: item.hours ?? 0,
+                    },
+                    { transaction: t },
+                );
+            }
+
+            const leadCount = await RequestAssignee.count({
+                where: { requestId, role: "lead" },
+                transaction: t,
+            });
+            if (leadCount !== 1) {
+                throw new ValidationError("Crew must contain exactly one lead", [
+                    {
+                        field: "assignees",
+                        message: "Exactly one lead is required",
+                    },
+                ]);
+            }
         });
-        return {
-            id: row.id,
-            requestId: row.requestId,
-            technicianId: row.technicianId,
-            role: row.role,
-            hours: Number(row.hours),
-        };
+
+        const request = await this.findById(requestId);
+        return request?.assignees ?? [];
     },
     async countAssignees(requestId) {
         return RequestAssignee.count({ where: { requestId } });

@@ -71,11 +71,38 @@ export const changeStatusBodySchema = z.object({
     status: z.enum(statuses),
 });
 
-export const addAssigneeBodySchema = z.object({
+const assigneeItemSchema = z.object({
     technicianId: z.string().uuid(),
     role: z.enum(["lead", "member"]),
     hours: z.number().min(0).max(9999).optional(),
 });
+
+export const setAssigneesBodySchema = z
+    .object({
+        assignees: z.array(assigneeItemSchema).min(1),
+    })
+    .superRefine((data, ctx) => {
+        const leadCount = data.assignees.filter(
+            (item) => item.role === "lead",
+        ).length;
+        if (leadCount !== 1) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Crew must contain exactly one lead",
+                path: ["assignees"],
+            });
+        }
+
+        const ids = data.assignees.map((item) => item.technicianId);
+        if (new Set(ids).size !== ids.length) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Duplicate technicianId in assignees list",
+                path: ["assignees"],
+            });
+        }
+    });
+
 export const assigneeParamsSchema = z.object({
     id: z.string().uuid(),
     technicianId: z.string().uuid(),

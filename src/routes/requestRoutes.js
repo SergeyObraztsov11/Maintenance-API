@@ -7,7 +7,7 @@ import {
     createRequestBodySchema,
     updateRequestBodySchema,
     changeStatusBodySchema,
-    addAssigneeBodySchema,
+    setAssigneesBodySchema,
     assigneeParamsSchema,
 } from "../validators/requestSchemas.js";
 
@@ -45,9 +45,9 @@ router.post(
     "/:id/assignees",
     validate({
         params: requestIdParamsSchema,
-        body: addAssigneeBodySchema,
+        body: setAssigneesBodySchema,
     }),
-    requestController.addAssignee,
+    requestController.setAssignees,
 );
 router.get(
     "/:id",

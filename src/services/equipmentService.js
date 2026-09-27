@@ -41,7 +41,16 @@ export const equipmentService = {
             updatedAt: now,
         };
 
-        return equipmentRepository.create(equipment);
+        try {
+            return await equipmentRepository.create(equipment);
+        } catch (err) {
+            if (err.name === "SequelizeUniqueConstraintError") {
+                throw new ConflictError(
+                    `Serial number ${input.serialNumber} already exists`,
+                );
+            }
+            throw err;
+        }
     },
     async update(id, input) {
         await this.getById(id);
@@ -61,19 +70,44 @@ export const equipmentService = {
         delete patch.id;
         delete patch.createdAt;
 
-        return equipmentRepository.update(id, patch);
+        try {
+            return await equipmentRepository.update(id, patch);
+        } catch (err) {
+            if (err.name === "SequelizeUniqueConstraintError") {
+                throw new ConflictError(
+                    `Serial number ${input.serialNumber} already exists`,
+                );
+            }
+            throw err;
+        }
     },
     async remove(id) {
         await this.getById(id);
         const requests = await requestRepository.findByEquipmentId(id);
-        const hasOpen = requests.some(
-            (item) => item.status === "new" || item.status === "in_progress",
-        );
-        if (hasOpen) {
+        if (requests.length > 0) {
+            const hasOpen = requests.some(
+                (item) => item.status === "new" || item.status === "in_progress",
+            );
             throw new ConflictError(
-                `Cannot delete equipment ${id}: open maintenance requests exist`,
+                hasOpen
+                    ? `Cannot delete equipment ${id}: open maintenance requests exist`
+                    : `Cannot delete equipment ${id}: related maintenance requests exist`,
             );
         }
-        await equipmentRepository.remove(id);
+        try {
+            await equipmentRepository.remove(id);
+        } catch (err) {
+            if (err.name === "SequelizeForeignKeyConstraintError") {
+                throw new ConflictError(
+                    `Cannot delete equipment ${id}: related records exist`,
+                );
+            }
+            if (err.name === "SequelizeUniqueConstraintError") {
+                throw new ConflictError(
+                    `Cannot delete equipment ${id}: unique constraint violated`,
+                );
+            }
+            throw err;
+        }
     },
 };

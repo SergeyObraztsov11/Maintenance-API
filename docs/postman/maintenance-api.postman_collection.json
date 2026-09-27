@@ -510,16 +510,19 @@
           }
         },
         {
-          "name": "POST add assignee (lead)",
+          "name": "POST set assignees (lead + member)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
-                  "pm.test(\"Assignee role is lead\", () => {",
-                  "  pm.expect(pm.response.json().data.role).to.eql(\"lead\");",
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"Crew has lead and member\", () => {",
+                  "  const data = pm.response.json().data;",
+                  "  pm.expect(data).to.be.an(\"array\");",
+                  "  pm.expect(data.length).to.be.at.least(1);",
+                  "  pm.expect(data.some((a) => a.role === \"lead\")).to.be.true;",
                   "});"
                 ]
               }
@@ -535,41 +538,10 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"technicianId\": \"{{technicianId}}\",\n  \"role\": \"lead\",\n  \"hours\": 4\n}"
-            },
-            "url": "{{baseUrl}}/api/requests/{{requestId}}/assignees"
-          }
-        },
-        {
-          "name": "POST add assignee (member)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
-                  "pm.test(\"Assignee role is member\", () => {",
-                  "  pm.expect(pm.response.json().data.role).to.eql(\"member\");",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"technicianId\": \"{{technicianId2}}\",\n  \"role\": \"member\",\n  \"hours\": 2\n}"
+              "raw": "{\n  \"assignees\": [\n    { \"technicianId\": \"{{technicianId}}\", \"role\": \"lead\", \"hours\": 4 },\n    { \"technicianId\": \"{{technicianId2}}\", \"role\": \"member\", \"hours\": 2 }\n  ]\n}"
             },
             "url": "{{baseUrl}}/api/requests/{{requestId}}/assignees",
-            "description": "Needs a second distinct technicianId from Setup. If seed has only one tech on assignees, set technicianId2 manually."
+            "description": "Replaces the whole crew in one transaction. Needs two technician IDs from Setup."
           }
         },
         {
@@ -706,6 +678,9 @@
                   "  pm.expect(d).to.have.property(\"site\");",
                   "  pm.expect(d).to.have.property(\"equipmentTotal\");",
                   "  pm.expect(d).to.have.property(\"requestsTotal\");",
+                  "  pm.expect(d).to.have.property(\"requestsByStatus\");",
+                  "  pm.expect(d).to.have.property(\"requestsByPriority\");",
+                  "  pm.expect(d).to.have.property(\"avgCloseTimeHours\");",
                   "});"
                 ]
               }
@@ -714,7 +689,42 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/api/reports/sites/{{siteId}}/summary"
+            "url": "{{baseUrl}}/api/sites/{{siteId}}/summary"
+          }
+        },
+        {
+          "name": "GET equipment load",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"Equipment load is array\", () => {",
+                  "  const data = pm.response.json().data;",
+                  "  pm.expect(data).to.be.an(\"array\");",
+                  "  if (data.length) {",
+                  "    pm.expect(data[0]).to.include.keys(\"requestsCount\", \"closedRequestsCount\", \"totalPlannedHours\");",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reports/equipment-load?minRequests=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reports", "equipment-load"],
+              "query": [
+                { "key": "minRequests", "value": "1" },
+                { "key": "from", "value": "", "disabled": true },
+                { "key": "to", "value": "", "disabled": true }
+              ]
+            }
           }
         },
         {
@@ -1006,23 +1016,23 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"technicianId\": \"aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee\",\n  \"role\": \"member\",\n  \"hours\": 1\n}"
+              "raw": "{\n  \"assignees\": [\n    { \"technicianId\": \"aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee\", \"role\": \"lead\", \"hours\": 1 }\n  ]\n}"
             },
             "url": "{{baseUrl}}/api/requests/{{requestId}}/assignees",
-            "description": "Uses requestId from happy path. Unknown technician → 404."
+            "description": "Unknown technician in crew → 404. Previous crew is not partially replaced."
           }
         },
         {
-          "name": "409 duplicate assignee",
+          "name": "422 assignees without lead",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status is 409', () => pm.response.to.have.status(409));",
-                  "pm.test(\"Error code CONFLICT\", () => {",
-                  "  pm.expect(pm.response.json().error.code).to.eql(\"CONFLICT\");",
+                  "pm.test('Status is 422', () => pm.response.to.have.status(422));",
+                  "pm.test(\"Error code VALIDATION_ERROR\", () => {",
+                  "  pm.expect(pm.response.json().error.code).to.eql(\"VALIDATION_ERROR\");",
                   "});"
                 ]
               }
@@ -1038,42 +1048,10 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"technicianId\": \"{{technicianId}}\",\n  \"role\": \"member\",\n  \"hours\": 1\n}"
+              "raw": "{\n  \"assignees\": [\n    { \"technicianId\": \"{{technicianId}}\", \"role\": \"member\", \"hours\": 1 }\n  ]\n}"
             },
             "url": "{{baseUrl}}/api/requests/{{requestId}}/assignees",
-            "description": "Re-assigns the same technician who is already on requestId."
-          }
-        },
-        {
-          "name": "409 second lead on same request",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 409', () => pm.response.to.have.status(409));",
-                  "pm.test(\"Error code CONFLICT\", () => {",
-                  "  pm.expect(pm.response.json().error.code).to.eql(\"CONFLICT\");",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"technicianId\": \"{{technicianId2}}\",\n  \"role\": \"lead\",\n  \"hours\": 1\n}"
-            },
-            "url": "{{baseUrl}}/api/requests/{{requestId}}/assignees",
-            "description": "API returns 409 if a lead already exists. PDF batch-replace without lead is 422; current API assigns one-by-one."
+            "description": "Crew without lead → 422 and full rollback."
           }
         },
         {
@@ -1102,7 +1080,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"technicianId\": \"{{technicianId}}\",\n  \"role\": \"boss\",\n  \"hours\": 1\n}"
+              "raw": "{\n  \"assignees\": [\n    { \"technicianId\": \"{{technicianId}}\", \"role\": \"boss\", \"hours\": 1 }\n  ]\n}"
             },
             "url": "{{baseUrl}}/api/requests/{{requestId}}/assignees",
             "description": "Invalid role enum → 422 validation."
@@ -1127,7 +1105,7 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/api/reports/sites/11111111-1111-4111-8111-111111111111/summary"
+            "url": "{{baseUrl}}/api/sites/11111111-1111-4111-8111-111111111111/summary"
           }
         }
       ]
