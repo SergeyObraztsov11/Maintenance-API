@@ -28,7 +28,7 @@ export const MaintenanceRequest = sequelize.define(
             defaultValue: "medium",
         },
         status: {
-            type: DataTypes.ENUM("new", "in_progress", "done"),
+            type: DataTypes.ENUM("new", "in_progress", "done", "rejected"),
             allowNull: false,
             defaultValue: "new",
         },
