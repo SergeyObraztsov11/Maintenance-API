@@ -1,7 +1,59 @@
 import { Equipment, EquipmentPassport, Site } from "../models/index.js";
+import { Op } from "sequelize";
 
 function toNumber(value) {
     return value === null || value === undefined ? value : Number(value);
+}
+
+function buildListQuery(query = {}) {
+    const where = {};
+
+    if (query.status) {
+        where.status = query.status;
+    }
+    if (query.type) {
+        where.type = query.type;
+    }
+    if (query.installedAtFrom || query.installedAtTo) {
+        where.installedAt = {};
+        if (query.installedAtFrom) {
+            where.installedAt[Op.gte] = query.installedAtFrom;
+        }
+        if (query.installedAtTo) {
+            where.installedAt[Op.lte] = query.installedAtTo;
+        }
+    }
+    if (query.createdAtFrom || query.createdAtTo) {
+        where.createdAt = {};
+        if (query.createdAtFrom) {
+            where.createdAt[Op.gte] = query.createdAtFrom;
+        }
+        if (query.createdAtTo) {
+            where.createdAt[Op.lte] = query.createdAtTo;
+        }
+    }
+    const allowedSort = [
+        "name",
+        "type",
+        "status",
+        "installedAt",
+        "createdAt",
+        "updatedAt",
+    ];
+    const sortBy = allowedSort.includes(query.sortBy)
+        ? query.sortBy
+        : "createdAt";
+    const sortOrder = query.sortOrder === "asc" ? "ASC" : "DESC";
+    const page = Math.max(1, Number(query.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(query.limit) || 10));
+    const offset = (page - 1) * limit;
+    return {
+        where,
+        order: [[sortBy, sortOrder]],
+        limit,
+        offset,
+        page,
+    };
 }
 
 function toApi(equipment) {
@@ -34,8 +86,15 @@ function toApi(equipment) {
 }
 
 export const equipmentRepository = {
-    async findAll() {
-        const rows = await Equipment.findAll({
+    async findAll(query = {}) {
+        const { where, order, limit, offset, page } = buildListQuery(query);
+
+        const { rows, count } = await Equipment.findAndCountAll({
+            where,
+            order,
+            limit,
+            offset,
+            distinct: true,
             include: [
                 {
                     model: Site,
@@ -55,9 +114,11 @@ export const equipmentRepository = {
                     required: false,
                 },
             ],
-            order: [["createdAt", "DESC"]],
         });
-        return rows.map(toApi);
+        return {
+            data: rows.map(toApi),
+            meta: { total: count, page, limit },
+        };
     },
     async findById(id) {
         const row = await Equipment.findByPk(id, {

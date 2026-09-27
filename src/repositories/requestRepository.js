@@ -3,6 +3,7 @@ import {
     RequestAssignee,
     Technician,
 } from "../models/index.js";
+import { Op } from "sequelize";
 
 function toNumber(value) {
     return value === null || value === undefined ? value : Number(value);
@@ -38,9 +39,62 @@ function toApi(request) {
     };
 }
 
+function buildListQuery(query = {}) {
+    const where = {};
+    if (query.status) {
+        where.status = query.status;
+    }
+    if (query.priority) {
+        where.priority = query.priority;
+    }
+    if (query.equipmentId) {
+        where.equipmentId = query.equipmentId;
+    }
+    if (query.createdAtFrom || query.createdAtTo) {
+        where.createdAt = {};
+        if (query.createdAtFrom) {
+            where.createdAt[Op.gte] = query.createdAtFrom;
+        }
+        if (query.createdAtTo) {
+            where.createdAt[Op.lte] = query.createdAtTo;
+        }
+    }
+    if (query.plannedAtFrom || query.plannedAtTo) {
+        where.plannedAt = {};
+        if (query.plannedAtFrom) {
+            where.plannedAt[Op.gte] = query.plannedAtFrom;
+        }
+        if (query.plannedAtTo) {
+            where.plannedAt[Op.lte] = query.plannedAtTo;
+        }
+    }
+    const allowedSort = [
+        "title",
+        "priority",
+        "status",
+        "plannedAt",
+        "createdAt",
+        "updatedAt",
+    ];
+    const sortBy = allowedSort.includes(query.sortBy)
+        ? query.sortBy
+        : "createdAt";
+    const sortOrder = query.sortOrder === "asc" ? "ASC" : "DESC";
+    const page = Math.max(1, Number(query.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(query.limit) || 10));
+    const offset = (page - 1) * limit;
+    return { where, order: [[sortBy, sortOrder]], limit, offset, page };
+}
+
 export const requestRepository = {
-    async findAll() {
-        const rows = await MaintenanceRequest.findAll({
+    async findAll(query = {}) {
+        const { where, order, limit, offset, page } = buildListQuery(query);
+        const { rows, count } = await MaintenanceRequest.findAndCountAll({
+            where,
+            order,
+            limit,
+            offset,
+            distinct: true,
             include: [
                 {
                     model: RequestAssignee,
@@ -59,9 +113,11 @@ export const requestRepository = {
                     ],
                 },
             ],
-            order: [["createdAt", "DESC"]],
         });
-        return rows.map(toApi);
+        return {
+            data: rows.map(toApi),
+            meta: { total: count, page, limit },
+        };
     },
 
     async findById(id) {

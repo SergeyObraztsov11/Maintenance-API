@@ -5,64 +5,10 @@ import { equipmentRepository } from "../repositories/equipmentRepository.js";
 import { NotFoundError } from "../errors/NotFoundError.js";
 import { ConflictError } from "../errors/ConflictError.js";
 import { requestRepository } from "../repositories/requestRepository.js";
-import { isInDateRange } from "../utils/dateRange.js";
 
 export const equipmentService = {
     async list(query = {}) {
-        let items = await equipmentRepository.findAll();
-
-        if (query.status) {
-            items = items.filter((item) => item.status === query.status);
-        }
-        if (query.type) {
-            items = items.filter((item) => item.type === query.type);
-        }
-        if (query.installedAtFrom || query.installedAtTo) {
-            items = items.filter((item) =>
-                isInDateRange(
-                    item.installedAt,
-                    query.installedAtFrom,
-                    query.installedAtTo,
-                ),
-            );
-        }
-        if (query.createdAtFrom || query.createdAtTo) {
-            items = items.filter((item) =>
-                isInDateRange(
-                    item.createdAt,
-                    query.createdAtFrom,
-                    query.createdAtTo,
-                ),
-            );
-        }
-
-        const sortBy = query.sortBy || "createdAt";
-        const sortOrder = query.sortOrder === "asc" ? 1 : -1;
-        const allowedSort = [
-            "name",
-            "type",
-            "status",
-            "installedAt",
-            "createdAt",
-            "updatedAt",
-        ];
-        const field = allowedSort.includes(sortBy) ? sortBy : "createdAt";
-
-        items = [...items].sort((a, b) => {
-            if (a[field] === b[field]) return 0;
-            return a[field] > b[field] ? sortOrder : -sortOrder;
-        });
-
-        const page = Math.max(1, Number(query.page) || 1);
-        const limit = Math.min(100, Math.max(1, Number(query.limit) || 10));
-        const total = items.length;
-        const start = (page - 1) * limit;
-        const data = items.slice(start, start + limit);
-
-        return {
-            data,
-            meta: { total, page, limit },
-        };
+        return equipmentRepository.findAll(query);
     },
     async getById(id) {
         const equipment = await equipmentRepository.findById(id);
