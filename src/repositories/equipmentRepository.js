@@ -1,71 +1,167 @@
-// Слой данных оборудования: чтение/запись JSON файла.
-import { readFile, writeFile, mkdir } from "node:fs/promises";
-import path from "node:path";
-import { config } from "../config/index.js";
+import { Equipment, EquipmentPassport, Site } from "../models/index.js";
 
-const filePath = path.join(config.dataDir, "equipment.json");
-
-async function ensureFile() {
-    await mkdir(config.dataDir, { recursive: true });
-    try {
-        await readFile(filePath, "utf8");
-    } catch (error) {
-        if (error.code === "ENOENT") {
-            await writeFile(filePath, "[]", "utf8");
-        } else {
-            throw error;
-        }
-    }
+function toNumber(value) {
+    return value === null || value === undefined ? value : Number(value);
 }
 
-async function readAll() {
-    await ensureFile();
-    const raw = await readFile(filePath, "utf8");
-    return JSON.parse(raw);
-}
+function toApi(equipment) {
+    const plain = equipment.get({ plain: true });
+    const site = plain.site;
 
-async function writeAll(items) {
-    await ensureFile();
-    await writeFile(filePath, JSON.stringify(items, null, 2), "utf8");
+    return {
+        id: plain.id,
+        name: plain.name,
+        type: plain.type,
+        serialNumber: plain.serialNumber,
+        status: plain.status,
+        installedAt: plain.installedAt,
+        createdAt: plain.createdAt,
+        updatedAt: plain.updatedAt,
+        location: site
+            ? { lat: toNumber(site.lat), lon: toNumber(site.lon) }
+            : null,
+        siteId: plain.siteId,
+        passport: plain.passport
+            ? {
+                  id: plain.passport.id,
+                  manufacturer: plain.passport.manufacturer,
+                  model: plain.passport.model,
+                  ratedPowerKw: toNumber(plain.passport.ratedPowerKw),
+                  lastInspectionAt: plain.passport.lastInspectionAt,
+              }
+            : null,
+    };
 }
 
 export const equipmentRepository = {
     async findAll() {
-        return readAll();
+        const rows = await Equipment.findAll({
+            include: [
+                {
+                    model: Site,
+                    as: "site",
+                    attributes: ["id", "lat", "lon", "name", "code"],
+                },
+                {
+                    model: EquipmentPassport,
+                    as: "passport",
+                    attributes: [
+                        "id",
+                        "manufacturer",
+                        "model",
+                        "ratedPowerKw",
+                        "lastInspectionAt",
+                    ],
+                    required: false,
+                },
+            ],
+            order: [["createdAt", "DESC"]],
+        });
+        return rows.map(toApi);
     },
-
     async findById(id) {
-        const items = await readAll();
-        return items.find((item) => item.id === id) ?? null;
+        const row = await Equipment.findByPk(id, {
+            include: [
+                {
+                    model: Site,
+                    as: "site",
+                    attributes: ["id", "lat", "lon", "name", "code"],
+                },
+                {
+                    model: EquipmentPassport,
+                    as: "passport",
+                    attributes: [
+                        "id",
+                        "manufacturer",
+                        "model",
+                        "ratedPowerKw",
+                        "lastInspectionAt",
+                    ],
+                    required: false,
+                },
+            ],
+        });
+        return row ? toApi(row) : null;
     },
-
     async findBySerialNumber(serialNumber) {
-        const items = await readAll();
-        return items.find((item) => item.serialNumber === serialNumber) ?? null;
+        const row = await Equipment.findOne({
+            where: { serialNumber },
+            include: [
+                {
+                    model: Site,
+                    as: "site",
+                    attributes: ["id", "lat", "lon", "name", "code"],
+                },
+                {
+                    model: EquipmentPassport,
+                    as: "passport",
+                    attributes: [
+                        "id",
+                        "manufacturer",
+                        "model",
+                        "ratedPowerKw",
+                        "lastInspectionAt",
+                    ],
+                    required: false,
+                },
+            ],
+        });
+        return row ? toApi(row) : null;
     },
-
     async create(equipment) {
-        const items = await readAll();
-        items.push(equipment);
-        await writeAll(items);
-        return equipment;
+        let site = await Site.findOne({
+            where: {
+                lat: equipment.location.lat,
+                lon: equipment.location.lon,
+            },
+        });
+        if (!site) {
+            site = await Site.create({
+                name: `Site ${equipment.location.lat}, ${equipment.location.lon}`,
+                code: `AUTO-${Date.now()}`,
+                region: "unknown",
+                lat: equipment.location.lat,
+                lon: equipment.location.lon,
+            });
+        }
+        await Equipment.create({
+            id: equipment.id,
+            siteId: site.id,
+            name: equipment.name,
+            type: equipment.type,
+            serialNumber: equipment.serialNumber,
+            status: equipment.status,
+            installedAt: equipment.installedAt,
+            createdAt: equipment.createdAt,
+            updatedAt: equipment.updatedAt,
+        });
+        return this.findById(equipment.id);
     },
-
     async update(id, patch) {
-        const items = await readAll();
-        const index = items.findIndex((item) => item.id === id);
-        if (index === -1) return null;
-        items[index] = { ...items[index], ...patch };
-        await writeAll(items);
-        return items[index];
-    },
+        const row = await Equipment.findByPk(id, {
+            include: [{ model: Site, as: "site" }],
+        });
+        if (!row) return null;
 
+        if (patch.location) {
+            await row.site.update({
+                lat: patch.location.lat,
+                lon: patch.location.lon,
+            });
+        }
+
+        const data = { ...patch };
+        delete data.location;
+        delete data.id;
+        delete data.createdAt;
+        delete data.passport;
+        delete data.siteId;
+
+        await row.update(data);
+        return this.findById(id);
+    },
     async remove(id) {
-        const items = await readAll();
-        const index = items.findIndex((item) => item.id === id);
-        if (index === -1) return false;
-        items.splice(index, 1);
-        await writeAll(items);
-        return true;
+        const deleted = await Equipment.destroy({ where: { id } });
+        return deleted > 0;
     },
 };
