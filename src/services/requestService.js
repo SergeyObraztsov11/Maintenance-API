@@ -3,7 +3,6 @@ import { requestRepository } from "../repositories/requestRepository.js";
 import { equipmentRepository } from "../repositories/equipmentRepository.js";
 import { NotFoundError } from "../errors/NotFoundError.js";
 import { ConflictError } from "../errors/ConflictError.js";
-import { isInDateRange } from "../utils/dateRange.js";
 
 // Бизнес-логика заявок: правила, статусы, привязка к оборудованию.
 const ALLOWED_TRANSITIONS = {
@@ -15,62 +14,7 @@ const ALLOWED_TRANSITIONS = {
 
 export const requestService = {
     async list(query = {}) {
-        let items = await requestRepository.findAll();
-
-        if (query.status) {
-            items = items.filter((item) => item.status === query.status);
-        }
-        if (query.priority) {
-            items = items.filter((item) => item.priority === query.priority);
-        }
-        if (query.equipmentId) {
-            items = items.filter(
-                (item) => item.equipmentId === query.equipmentId,
-            );
-        }
-        if (query.createdAtFrom || query.createdAtTo) {
-            items = items.filter((item) =>
-                isInDateRange(
-                    item.createdAt,
-                    query.createdAtFrom,
-                    query.createdAtTo,
-                ),
-            );
-        }
-        if (query.plannedAtFrom || query.plannedAtTo) {
-            items = items.filter((item) =>
-                isInDateRange(
-                    item.plannedAt,
-                    query.plannedAtFrom,
-                    query.plannedAtTo,
-                ),
-            );
-        }
-
-        const sortBy = query.sortBy || "createdAt";
-        const sortOrder = query.sortOrder === "asc" ? 1 : -1;
-        const allowedSort = [
-            "title",
-            "priority",
-            "status",
-            "plannedAt",
-            "createdAt",
-            "updatedAt",
-        ];
-        const field = allowedSort.includes(sortBy) ? sortBy : "createdAt";
-
-        items = [...items].sort((a, b) => {
-            if (a[field] === b[field]) return 0;
-            return a[field] > b[field] ? sortOrder : -sortOrder;
-        });
-
-        const page = Math.max(1, Number(query.page) || 1);
-        const limit = Math.min(100, Math.max(1, Number(query.limit) || 10));
-        const total = items.length;
-        const start = (page - 1) * limit;
-        const data = items.slice(start, start + limit);
-
-        return { data, meta: { total, page, limit } };
+        return requestRepository.findAll(query);
     },
 
     async listByEquipmentId(equipmentId, query = {}) {
