@@ -81,8 +81,22 @@ export const requestController = {
     },
     async addAssignee(req, res, next) {
         try {
-            const data = await requestService.addAssignee(req.params.id, req.body);
+            const data = await requestService.addAssignee(
+                req.params.id,
+                req.body,
+            );
             res.status(201).json({ data });
+        } catch (error) {
+            next(error);
+        }
+    },
+    async removeAssignee(req, res, next) {
+        try {
+            await requestService.removeAssignee(
+                req.params.id,
+                req.params.technicianId,
+            );
+            res.status(204).send();
         } catch (error) {
             next(error);
         }

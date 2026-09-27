@@ -116,4 +116,16 @@ export const requestService = {
             throw err;
         }
     },
+    async removeAssignee(requestId, technicianId) {
+        await this.getById(requestId);
+        const removed = await requestRepository.removeAssignee(
+            requestId,
+            technicianId,
+        );
+        if (!removed) {
+            throw new NotFoundError(
+                `Assignee ${technicianId} not found on request ${requestId}`,
+            );
+        }
+    },
 };

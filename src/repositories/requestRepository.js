@@ -285,4 +285,10 @@ export const requestRepository = {
             where: { requestId, role: "lead" },
         });
     },
+    async removeAssignee(requestId, technicianId) {
+        const deleted = await RequestAssignee.destroy({
+            where: { requestId, technicianId },
+        });
+        return deleted > 0;
+    },
 };
