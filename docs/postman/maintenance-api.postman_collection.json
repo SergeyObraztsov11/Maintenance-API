@@ -706,6 +706,9 @@
                   "  pm.expect(d).to.have.property(\"site\");",
                   "  pm.expect(d).to.have.property(\"equipmentTotal\");",
                   "  pm.expect(d).to.have.property(\"requestsTotal\");",
+                  "  pm.expect(d).to.have.property(\"requestsByStatus\");",
+                  "  pm.expect(d).to.have.property(\"requestsByPriority\");",
+                  "  pm.expect(d).to.have.property(\"avgCloseTimeHours\");",
                   "});"
                 ]
               }
@@ -714,7 +717,42 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/api/reports/sites/{{siteId}}/summary"
+            "url": "{{baseUrl}}/api/sites/{{siteId}}/summary"
+          }
+        },
+        {
+          "name": "GET equipment load",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"Equipment load is array\", () => {",
+                  "  const data = pm.response.json().data;",
+                  "  pm.expect(data).to.be.an(\"array\");",
+                  "  if (data.length) {",
+                  "    pm.expect(data[0]).to.include.keys(\"requestsCount\", \"closedRequestsCount\", \"totalPlannedHours\");",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reports/equipment-load?minRequests=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reports", "equipment-load"],
+              "query": [
+                { "key": "minRequests", "value": "1" },
+                { "key": "from", "value": "", "disabled": true },
+                { "key": "to", "value": "", "disabled": true }
+              ]
+            }
           }
         },
         {
@@ -1127,7 +1165,7 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/api/reports/sites/11111111-1111-4111-8111-111111111111/summary"
+            "url": "{{baseUrl}}/api/sites/11111111-1111-4111-8111-111111111111/summary"
           }
         }
       ]

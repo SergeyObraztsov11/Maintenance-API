@@ -144,7 +144,9 @@ npm run seed
 | GET | `/api/requests/:id/history` | Журнал изменений статуса |
 | POST | `/api/requests/:id/assignees` | Назначение специалиста на заявку |
 | DELETE | `/api/requests/:id/assignees/:technicianId` | Снятие специалиста |
-| GET | `/api/reports/sites/:id/summary` | Сводка по площадке |
+| GET | `/api/sites/:id/summary` | Сводка по площадке |
+| GET | `/api/reports/sites/:id/summary` | То же (alias) |
+| GET | `/api/reports/equipment-load` | Нагрузка на оборудование |
 | GET | `/api/reports/technicians/workload` | Нагрузка специалистов |
 
 Query для списков (примеры): `status`, `type` / `priority`, `equipmentId`, `createdAtFrom`, `createdAtTo`, `installedAtFrom` / `installedAtTo` (equipment), `plannedAtFrom` / `plannedAtTo` (requests), `sortBy`, `sortOrder`, `page`, `limit`.  
@@ -323,19 +325,30 @@ in_progress -> rejected
 
 ### Отчёты
 
-Оба отчёта считаются **raw SQL** с параметризованными подстановками (без конкатенации ввода в текст запроса).
+Отчёты считаются **raw SQL** с параметризованными подстановками (без конкатенации ввода в текст запроса).
 
-**Сводка по площадке** — `GET /api/reports/sites/{id}/summary`
+**Сводка по площадке** — `GET /api/sites/{id}/summary`  
+(alias: `GET /api/reports/sites/{id}/summary`)
 
 - данные площадки (`id`, `name`, `code`, `region`);
 - число единиц оборудования и разбивка по `status`;
-- число заявок по площадке и разбивка по `status`.
+- число заявок: разбивка по `status` и по `priority`;
+- `avgCloseTimeHours` — среднее время от создания заявки до первого перехода в `done` (часы; `null`, если закрытых нет).
 
 Несуществующая площадка → **404**.
 
+**Нагрузка на оборудование** — `GET /api/reports/equipment-load`
+
+Query (опционально): `from`, `to` (ISO, фильтр по `created_at` заявки), `minRequests` (HAVING, по умолчанию `0`).
+
+По каждой единице:
+- `requestsCount`, `closedRequestsCount`;
+- `totalPlannedHours` (сумма `request_assignees.hours`);
+- `lastServicedAt` (время последнего перехода заявки в `done`).
+
 **Нагрузка специалистов** — `GET /api/reports/technicians/workload`
 
-- по каждому специалисту: `assignmentsCount`, `totalHours` (сумма `request_assignees.hours`);
+- по каждому специалисту: `assignmentsCount`, `totalHours`;
 - сортировка по убыванию часов.
 
 ### Ошибка валидации
@@ -399,7 +412,8 @@ Import в Postman → `docker compose up -d db` → `npm run db:migrate` → `np
 - DELETE equipment
 
 **Reports**
-- GET site summary (`/api/reports/sites/:id/summary`)
+- GET site summary (`/api/sites/:id/summary`)
+- GET equipment load (`/api/reports/equipment-load`)
 - GET technicians workload (`/api/reports/technicians/workload`)
 
 **Negative**
