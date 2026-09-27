@@ -1,70 +1,151 @@
-import { readFile, writeFile, mkdir } from "node:fs/promises";
-import path from "node:path";
-import { config } from "../config/index.js";
+import {
+    MaintenanceRequest,
+    RequestAssignee,
+    Technician,
+} from "../models/index.js";
 
-const filePath = path.join(config.dataDir, "requests.json");
-
-async function ensureFile() {
-    await mkdir(config.dataDir, { recursive: true });
-    try {
-        await readFile(filePath, "utf8");
-    } catch (error) {
-        if (error.code === "ENOENT") {
-            await writeFile(filePath, "[]", "utf8");
-        } else {
-            throw error;
-        }
-    }
+function toNumber(value) {
+    return value === null || value === undefined ? value : Number(value);
 }
 
-async function readAll() {
-    await ensureFile();
-    const raw = await readFile(filePath, "utf8");
-    return JSON.parse(raw);
-}
+function toApi(request) {
+    const plain = request.get({ plain: true });
 
-async function writeAll(items) {
-    await ensureFile();
-    await writeFile(filePath, JSON.stringify(items, null, 2), "utf8");
+    return {
+        id: plain.id,
+        equipmentId: plain.equipmentId,
+        title: plain.title,
+        description: plain.description,
+        priority: plain.priority,
+        status: plain.status,
+        plannedAt: plain.plannedAt,
+        author: plain.author,
+        createdAt: plain.createdAt,
+        updatedAt: plain.updatedAt,
+        assignees: (plain.assignees ?? []).map((item) => ({
+            id: item.id,
+            role: item.role,
+            hours: toNumber(item.hours),
+            technician: item.technician
+                ? {
+                      id: item.technician.id,
+                      fullName: item.technician.fullName,
+                      specialization: item.technician.specialization,
+                      employeeNumber: item.technician.employeeNumber,
+                  }
+                : null,
+        })),
+    };
 }
 
 export const requestRepository = {
     async findAll() {
-        return readAll();
+        const rows = await MaintenanceRequest.findAll({
+            include: [
+                {
+                    model: RequestAssignee,
+                    as: "assignees",
+                    include: [
+                        {
+                            model: Technician,
+                            as: "technician",
+                            attributes: [
+                                "id",
+                                "fullName",
+                                "specialization",
+                                "employeeNumber",
+                            ],
+                        },
+                    ],
+                },
+            ],
+            order: [["createdAt", "DESC"]],
+        });
+        return rows.map(toApi);
     },
 
     async findById(id) {
-        const items = await readAll();
-        return items.find((item) => item.id === id) ?? null;
+        const row = await MaintenanceRequest.findByPk(id, {
+            include: [
+                {
+                    model: RequestAssignee,
+                    as: "assignees",
+                    include: [
+                        {
+                            model: Technician,
+                            as: "technician",
+                            attributes: [
+                                "id",
+                                "fullName",
+                                "specialization",
+                                "employeeNumber",
+                            ],
+                        },
+                    ],
+                },
+            ],
+        });
+        return row ? toApi(row) : null;
     },
 
     async findByEquipmentId(equipmentId) {
-        const items = await readAll();
-        return items.filter((item) => item.equipmentId === equipmentId);
+        const rows = await MaintenanceRequest.findAll({
+            where: { equipmentId },
+            include: [
+                {
+                    model: RequestAssignee,
+                    as: "assignees",
+                    include: [
+                        {
+                            model: Technician,
+                            as: "technician",
+                            attributes: [
+                                "id",
+                                "fullName",
+                                "specialization",
+                                "employeeNumber",
+                            ],
+                        },
+                    ],
+                },
+            ],
+            order: [["createdAt", "DESC"]],
+        });
+        return rows.map(toApi);
     },
 
     async create(request) {
-        const items = await readAll();
-        items.push(request);
-        await writeAll(items);
-        return request;
+        await MaintenanceRequest.create({
+            id: request.id,
+            equipmentId: request.equipmentId,
+            title: request.title,
+            description: request.description ?? "",
+            priority: request.priority,
+            status: request.status ?? "new",
+            plannedAt: request.plannedAt ?? new Date().toISOString(),
+            author: request.author ?? "api",
+            createdAt: request.createdAt,
+            updatedAt: request.updatedAt,
+        });
+
+        return this.findById(request.id);
     },
 
     async update(id, patch) {
-        const items = await readAll();
-        const index = items.findIndex((item) => item.id === id);
-        if (index === -1) return null;
-        items[index] = { ...items[index], ...patch };
-        await writeAll(items);
-        return items[index];
+        const row = await MaintenanceRequest.findByPk(id);
+        if (!row) return null;
+
+        const data = { ...patch };
+        delete data.id;
+        delete data.createdAt;
+        delete data.assignees;
+
+        await row.update(data);
+        return this.findById(id);
     },
 
     async remove(id) {
-        const items = await readAll();
-        const index = items.findIndex((item) => item.id === id);
-        if (index === -1) return false;
-        items.splice(index, 1);
-        await writeAll(items);
-        return true;
+        const deleted = await MaintenanceRequest.destroy({ where: { id } });
+        return deleted > 0;
     },
 };
