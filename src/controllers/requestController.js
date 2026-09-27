@@ -71,4 +71,12 @@ export const requestController = {
             next(error);
         }
     },
+    async getStatusHistory(req, res, next) {
+        try {
+            const data = await requestService.getStatusHistory(req.params.id);
+            res.status(200).json({ data });
+        } catch (error) {
+            next(error);
+        }
+    },
 };

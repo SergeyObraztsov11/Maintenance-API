@@ -171,7 +171,24 @@ export const requestRepository = {
         });
         return rows.map(toApi);
     },
-
+    async findStatusHistory(requestId) {
+        const rows = await RequestStatusHistory.findAll({
+            where: { requestId },
+            order: [["createdAt", "ASC"]],
+        });
+        return rows.map((row) => {
+            const plain = row.get({ plain: true });
+            return {
+                id: plain.id,
+                requestId: plain.requestId,
+                fromStatus: plain.fromStatus,
+                toStatus: plain.toStatus,
+                changedBy: plain.changedBy,
+                comment: plain.comment,
+                createdAt: plain.createdAt,
+            };
+        });
+    },
     async create(request) {
         await sequelize.transaction(async (t) => {
             await MaintenanceRequest.create(

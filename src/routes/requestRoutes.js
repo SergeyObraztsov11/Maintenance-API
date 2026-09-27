@@ -30,6 +30,11 @@ router.patch(
     requestController.changeStatus,
 );
 router.get(
+    "/:id/history",
+    validate({ params: requestIdParamsSchema }),
+    requestController.getStatusHistory,
+);
+router.get(
     "/:id",
     validate({ params: requestIdParamsSchema }),
     requestController.getById,

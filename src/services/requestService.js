@@ -80,6 +80,10 @@ export const requestService = {
         });
         return updated;
     },
+    async getStatusHistory(id) {
+        await this.getById(id);
+        return requestRepository.findStatusHistory(id);
+    },
     async remove(id) {
         await this.getById(id);
         await requestRepository.remove(id);
