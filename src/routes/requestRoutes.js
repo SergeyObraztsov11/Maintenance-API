@@ -7,6 +7,8 @@ import {
     createRequestBodySchema,
     updateRequestBodySchema,
     changeStatusBodySchema,
+    addAssigneeBodySchema,
+    assigneeParamsSchema,
 } from "../validators/requestSchemas.js";
 
 const router = Router();
@@ -28,6 +30,24 @@ router.patch(
         body: changeStatusBodySchema,
     }),
     requestController.changeStatus,
+);
+router.get(
+    "/:id/history",
+    validate({ params: requestIdParamsSchema }),
+    requestController.getStatusHistory,
+);
+router.delete(
+    "/:id/assignees/:technicianId",
+    validate({ params: assigneeParamsSchema }),
+    requestController.removeAssignee,
+);
+router.post(
+    "/:id/assignees",
+    validate({
+        params: requestIdParamsSchema,
+        body: addAssigneeBodySchema,
+    }),
+    requestController.addAssignee,
 );
 router.get(
     "/:id",

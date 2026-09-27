@@ -1,9 +1,11 @@
 import {
     MaintenanceRequest,
     RequestAssignee,
+    RequestStatusHistory,
     Technician,
 } from "../models/index.js";
 import { Op } from "sequelize";
+import { sequelize } from "../db/index.js";
 
 function toNumber(value) {
     return value === null || value === undefined ? value : Number(value);
@@ -169,21 +171,52 @@ export const requestRepository = {
         });
         return rows.map(toApi);
     },
-
-    async create(request) {
-        await MaintenanceRequest.create({
-            id: request.id,
-            equipmentId: request.equipmentId,
-            title: request.title,
-            description: request.description ?? "",
-            priority: request.priority,
-            status: request.status ?? "new",
-            plannedAt: request.plannedAt ?? new Date().toISOString(),
-            author: request.author ?? "api",
-            createdAt: request.createdAt,
-            updatedAt: request.updatedAt,
+    async findStatusHistory(requestId) {
+        const rows = await RequestStatusHistory.findAll({
+            where: { requestId },
+            order: [["createdAt", "ASC"]],
         });
-
+        return rows.map((row) => {
+            const plain = row.get({ plain: true });
+            return {
+                id: plain.id,
+                requestId: plain.requestId,
+                fromStatus: plain.fromStatus,
+                toStatus: plain.toStatus,
+                changedBy: plain.changedBy,
+                comment: plain.comment,
+                createdAt: plain.createdAt,
+            };
+        });
+    },
+    async create(request) {
+        await sequelize.transaction(async (t) => {
+            await MaintenanceRequest.create(
+                {
+                    id: request.id,
+                    equipmentId: request.equipmentId,
+                    title: request.title,
+                    description: request.description ?? "",
+                    priority: request.priority,
+                    status: request.status ?? "new",
+                    plannedAt: request.plannedAt ?? new Date().toISOString(),
+                    author: request.author ?? "api",
+                    createdAt: request.createdAt,
+                    updatedAt: request.updatedAt,
+                },
+                { transaction: t },
+            );
+            await RequestStatusHistory.create(
+                {
+                    requestId: request.id,
+                    fromStatus: null,
+                    toStatus: request.status ?? "new",
+                    changedBy: request.author ?? "api",
+                    comment: "Created",
+                },
+                { transaction: t },
+            );
+        });
         return this.findById(request.id);
     },
 
@@ -202,6 +235,60 @@ export const requestRepository = {
 
     async remove(id) {
         const deleted = await MaintenanceRequest.destroy({ where: { id } });
+        return deleted > 0;
+    },
+    async changeStatus(id, { status, changedBy, comment }) {
+        await sequelize.transaction(async (t) => {
+            const row = await MaintenanceRequest.findByPk(id, {
+                transaction: t,
+                lock: t.LOCK.UPDATE,
+            });
+            if (!row) return null;
+            const fromStatus = row.status;
+            await row.update(
+                { status, updatedAt: new Date().toISOString() },
+                { transaction: t },
+            );
+            await RequestStatusHistory.create(
+                {
+                    requestId: id,
+                    fromStatus,
+                    toStatus: status,
+                    changedBy: changedBy,
+                    comment: comment,
+                },
+                { transaction: t },
+            );
+        });
+        return this.findById(id);
+    },
+    async addAssignee(requestId, { technicianId, role, hours }) {
+        const row = await RequestAssignee.create({
+            requestId,
+            technicianId,
+            role,
+            hours: hours ?? 0,
+        });
+        return {
+            id: row.id,
+            requestId: row.requestId,
+            technicianId: row.technicianId,
+            role: row.role,
+            hours: Number(row.hours),
+        };
+    },
+    async countAssignees(requestId) {
+        return RequestAssignee.count({ where: { requestId } });
+    },
+    async findLead(requestId) {
+        return RequestAssignee.findOne({
+            where: { requestId, role: "lead" },
+        });
+    },
+    async removeAssignee(requestId, technicianId) {
+        const deleted = await RequestAssignee.destroy({
+            where: { requestId, technicianId },
+        });
         return deleted > 0;
     },
 };

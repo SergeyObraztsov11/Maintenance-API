@@ -3,6 +3,7 @@ import { requestRepository } from "../repositories/requestRepository.js";
 import { equipmentRepository } from "../repositories/equipmentRepository.js";
 import { NotFoundError } from "../errors/NotFoundError.js";
 import { ConflictError } from "../errors/ConflictError.js";
+import { Technician } from "../models/index.js";
 
 // Бизнес-логика заявок: правила, статусы, привязка к оборудованию.
 const ALLOWED_TRANSITIONS = {
@@ -65,25 +66,75 @@ export const requestService = {
 
         return requestRepository.update(id, patch);
     },
-
     async changeStatus(id, status) {
         const request = await this.getById(id);
         const allowed = ALLOWED_TRANSITIONS[request.status] ?? [];
-
         if (!allowed.includes(status)) {
             throw new ConflictError(
                 `Cannot change status from ${request.status} to ${status}`,
             );
         }
 
-        return requestRepository.update(id, {
+        if (status === "in_progress") {
+            const count = await requestRepository.countAssignees(id);
+            if (count === 0) {
+                throw new ConflictError(
+                    "Cannot set in_progress without assignees",
+                );
+            }
+        }
+        const updated = await requestRepository.changeStatus(id, {
             status,
-            updatedAt: new Date().toISOString(),
+            changedBy: "api",
+            comment: null,
         });
+        return updated;
     },
-
+    async getStatusHistory(id) {
+        await this.getById(id);
+        return requestRepository.findStatusHistory(id);
+    },
     async remove(id) {
         await this.getById(id);
         await requestRepository.remove(id);
+    },
+    async addAssignee(requestId, { technicianId, role, hours }) {
+        await this.getById(requestId);
+        const tech = await Technician.findByPk(technicianId);
+        if (!tech) {
+            throw new NotFoundError(`Technician ${technicianId} not found`);
+        }
+        if (role === "lead") {
+            const existingLead = await requestRepository.findLead(requestId);
+            if (existingLead) {
+                throw new ConflictError("Request already has a lead");
+            }
+        }
+        try {
+            return await requestRepository.addAssignee(requestId, {
+                technicianId,
+                role,
+                hours,
+            });
+        } catch (err) {
+            if (err.name === "SequelizeUniqueConstraintError") {
+                throw new ConflictError(
+                    "Technician is already assigned to this request",
+                );
+            }
+            throw err;
+        }
+    },
+    async removeAssignee(requestId, technicianId) {
+        await this.getById(requestId);
+        const removed = await requestRepository.removeAssignee(
+            requestId,
+            technicianId,
+        );
+        if (!removed) {
+            throw new NotFoundError(
+                `Assignee ${technicianId} not found on request ${requestId}`,
+            );
+        }
     },
 };

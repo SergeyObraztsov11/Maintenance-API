@@ -70,3 +70,13 @@ export const updateRequestBodySchema = z.object({
 export const changeStatusBodySchema = z.object({
     status: z.enum(statuses),
 });
+
+export const addAssigneeBodySchema = z.object({
+    technicianId: z.string().uuid(),
+    role: z.enum(["lead", "member"]),
+    hours: z.number().min(0).max(9999).optional(),
+});
+export const assigneeParamsSchema = z.object({
+    id: z.string().uuid(),
+    technicianId: z.string().uuid(),
+});
