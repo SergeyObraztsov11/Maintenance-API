@@ -262,4 +262,27 @@ export const requestRepository = {
         });
         return this.findById(id);
     },
+    async addAssignee(requestId, { technicianId, role, hours }) {
+        const row = await RequestAssignee.create({
+            requestId,
+            technicianId,
+            role,
+            hours: hours ?? 0,
+        });
+        return {
+            id: row.id,
+            requestId: row.requestId,
+            technicianId: row.technicianId,
+            role: row.role,
+            hours: Number(row.hours),
+        };
+    },
+    async countAssignees(requestId) {
+        return RequestAssignee.count({ where: { requestId } });
+    },
+    async findLead(requestId) {
+        return RequestAssignee.findOne({
+            where: { requestId, role: "lead" },
+        });
+    },
 };

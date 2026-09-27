@@ -7,6 +7,7 @@ import {
     createRequestBodySchema,
     updateRequestBodySchema,
     changeStatusBodySchema,
+    addAssigneeBodySchema,
 } from "../validators/requestSchemas.js";
 
 const router = Router();
@@ -33,6 +34,14 @@ router.get(
     "/:id/history",
     validate({ params: requestIdParamsSchema }),
     requestController.getStatusHistory,
+);
+router.post(
+    "/:id/assignees",
+    validate({
+        params: requestIdParamsSchema,
+        body: addAssigneeBodySchema,
+    }),
+    requestController.addAssignee,
 );
 router.get(
     "/:id",

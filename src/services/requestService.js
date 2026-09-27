@@ -3,6 +3,7 @@ import { requestRepository } from "../repositories/requestRepository.js";
 import { equipmentRepository } from "../repositories/equipmentRepository.js";
 import { NotFoundError } from "../errors/NotFoundError.js";
 import { ConflictError } from "../errors/ConflictError.js";
+import { Technician } from "../models/index.js";
 
 // Бизнес-логика заявок: правила, статусы, привязка к оборудованию.
 const ALLOWED_TRANSITIONS = {
@@ -87,5 +88,32 @@ export const requestService = {
     async remove(id) {
         await this.getById(id);
         await requestRepository.remove(id);
+    },
+    async addAssignee(requestId, { technicianId, role, hours }) {
+        await this.getById(requestId);
+        const tech = await Technician.findByPk(technicianId);
+        if (!tech) {
+            throw new NotFoundError(`Technician ${technicianId} not found`);
+        }
+        if (role === "lead") {
+            const existingLead = await requestRepository.findLead(requestId);
+            if (existingLead) {
+                throw new ConflictError("Request already has a lead");
+            }
+        }
+        try {
+            return await requestRepository.addAssignee(requestId, {
+                technicianId,
+                role,
+                hours,
+            });
+        } catch (err) {
+            if (err.name === "SequelizeUniqueConstraintError") {
+                throw new ConflictError(
+                    "Technician is already assigned to this request",
+                );
+            }
+            throw err;
+        }
     },
 };

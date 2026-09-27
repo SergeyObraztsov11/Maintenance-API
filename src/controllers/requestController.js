@@ -79,4 +79,12 @@ export const requestController = {
             next(error);
         }
     },
+    async addAssignee(req, res, next) {
+        try {
+            const data = await requestService.addAssignee(req.params.id, req.body);
+            res.status(201).json({ data });
+        } catch (error) {
+            next(error);
+        }
+    },
 };
