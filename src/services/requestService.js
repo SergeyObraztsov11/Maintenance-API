@@ -3,7 +3,9 @@ import { requestRepository } from "../repositories/requestRepository.js";
 import { equipmentRepository } from "../repositories/equipmentRepository.js";
 import { NotFoundError } from "../errors/NotFoundError.js";
 import { ConflictError } from "../errors/ConflictError.js";
+import { ValidationError } from "../errors/ValidationError.js";
 import { Technician } from "../models/index.js";
+import { Op } from "sequelize";
 
 // Бизнес-логика заявок: правила, статусы, привязка к оборудованию.
 const ALLOWED_TRANSITIONS = {
@@ -98,32 +100,36 @@ export const requestService = {
         await this.getById(id);
         await requestRepository.remove(id);
     },
-    async addAssignee(requestId, { technicianId, role, hours }) {
+    async setAssignees(requestId, assignees) {
         await this.getById(requestId);
-        const tech = await Technician.findByPk(technicianId);
-        if (!tech) {
-            throw new NotFoundError(`Technician ${technicianId} not found`);
+
+        const leadCount = assignees.filter((item) => item.role === "lead").length;
+        if (leadCount !== 1) {
+            throw new ValidationError("Crew must contain exactly one lead", [
+                { field: "assignees", message: "Exactly one lead is required" },
+            ]);
         }
-        if (role === "lead") {
-            const existingLead = await requestRepository.findLead(requestId);
-            if (existingLead) {
-                throw new ConflictError("Request already has a lead");
-            }
+
+        const technicianIds = assignees.map((item) => item.technicianId);
+        if (new Set(technicianIds).size !== technicianIds.length) {
+            throw new ValidationError("Duplicate technician in crew", [
+                {
+                    field: "assignees",
+                    message: "Duplicate technicianId in assignees list",
+                },
+            ]);
         }
-        try {
-            return await requestRepository.addAssignee(requestId, {
-                technicianId,
-                role,
-                hours,
-            });
-        } catch (err) {
-            if (err.name === "SequelizeUniqueConstraintError") {
-                throw new ConflictError(
-                    "Technician is already assigned to this request",
-                );
-            }
-            throw err;
+
+        const technicians = await Technician.findAll({
+            where: { id: { [Op.in]: technicianIds } },
+        });
+        if (technicians.length !== technicianIds.length) {
+            const found = new Set(technicians.map((item) => item.id));
+            const missing = technicianIds.find((id) => !found.has(id));
+            throw new NotFoundError(`Technician ${missing} not found`);
         }
+
+        return requestRepository.replaceAssignees(requestId, assignees);
     },
     async removeAssignee(requestId, technicianId) {
         await this.getById(requestId);

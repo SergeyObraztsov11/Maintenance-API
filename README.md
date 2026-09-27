@@ -142,7 +142,7 @@ npm run seed
 | PATCH | `/api/requests/:id/status` | Смена статуса с проверкой перехода |
 | DELETE | `/api/requests/:id` | Удаление заявки |
 | GET | `/api/requests/:id/history` | Журнал изменений статуса |
-| POST | `/api/requests/:id/assignees` | Назначение специалиста на заявку |
+| POST | `/api/requests/:id/assignees` | Назначение бригады (замена списка) |
 | DELETE | `/api/requests/:id/assignees/:technicianId` | Снятие специалиста |
 | GET | `/api/sites/:id/summary` | Сводка по площадке |
 | GET | `/api/reports/sites/:id/summary` | То же (alias) |
@@ -229,8 +229,8 @@ in_progress -> rejected
 
 - смена статуса и запись в `request_status_history` выполняются в одной транзакции;
 - переход в `in_progress` без assignees запрещён (409);
-- на заявке допускается только один `lead`;
-- повторное назначение того же специалиста запрещено (409).
+- назначение бригады — одной транзакцией (полная замена списка), ровно один `lead` иначе 422;
+- повтор одного `technicianId` в списке запрещён (422).
 
 ## Формат ошибки
 
@@ -313,15 +313,22 @@ in_progress -> rejected
 День пригоден, если осадки ≤ `WEATHER_PRECIPITATION_MAX_MM` и ветер ≤ `WEATHER_WIND_MAX_MS`.  
 Скорость ветра запрашивается у Open-Meteo в м/с (`wind_speed_unit=ms`), чтобы совпадать с порогом в env.
 
-### Назначение специалиста
+### Назначение бригады
 
-`POST /api/requests/{id}/assignees`
+`POST /api/requests/{id}/assignees` — **полная замена** назначений в одной транзакции.
 
 ```json
-{ "technicianId": "...", "role": "lead", "hours": 4 }
+{
+  "assignees": [
+    { "technicianId": "...", "role": "lead", "hours": 4 },
+    { "technicianId": "...", "role": "member", "hours": 2 }
+  ]
+}
 ```
 
-`role`: `lead` \| `member`. На заявке только один `lead`. Повтор того же специалиста → **409**.
+В списке должен быть ровно один `lead`. Иначе → **422** и откат.  
+Несуществующий специалист → **404**.  
+`DELETE /api/requests/{id}/assignees/{technicianId}` — снять одного.
 
 ### Отчёты
 
@@ -403,8 +410,7 @@ Import в Postman → `docker compose up -d db` → `npm run db:migrate` → `np
 - GET list requests
 - GET request by id
 - PATCH update request
-- POST add assignee (lead)
-- POST add assignee (member)
+- POST set assignees (lead + member)
 - PATCH change status to `in_progress`
 - GET request status history
 - DELETE assignee (member)
@@ -424,8 +430,7 @@ Import в Postman → `docker compose up -d db` → `npm run db:migrate` → `np
 - 429 rate limit
 - 409 `in_progress` without assignees
 - 404 assignee unknown technician
-- 409 duplicate assignee
-- 409 second lead on same request
+- 422 assignees without lead
 - 422 assignee invalid role
 - 404 site summary not found
 
