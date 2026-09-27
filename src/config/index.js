@@ -13,7 +13,6 @@ export const config = {
     weatherWindMaxMs: Number(process.env.WEATHER_WIND_MAX_MS) || 12,
     weatherPrecipitationMaxMm:
         Number(process.env.WEATHER_PRECIPITATION_MAX_MM) || 0.1,
-    dataDir: process.env.DATA_DIR || "data",
     apiKey: process.env.API_KEY || "",
     db: {
         host: process.env.DB_HOST || "localhost",

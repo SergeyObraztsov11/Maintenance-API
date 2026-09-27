@@ -18,6 +18,6 @@ export default [
         },
     },
     {
-        ignores: ["node_modules/**", "data/**", "docs/**"],
+        ignores: ["node_modules/**", "docs/**"],
     },
 ];
