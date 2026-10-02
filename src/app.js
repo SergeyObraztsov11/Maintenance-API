@@ -13,18 +13,20 @@ import { requestId } from "./middlewares/requestId.js";
 import { requireApiKey } from "./middlewares/requireApiKey.js";
 import { config } from "./config/index.js";
 import authRoutes from "./routes/authRoutes.js";
+import cookieParser from "cookie-parser";
 
 const app = express();
 
-// requestId before body parser so JSON/413 errors still carry requestId
 app.use(requestId);
 app.use(requestLogger);
 app.use(express.json({ limit: "100kb" }));
+app.use(cookieParser());
 app.use(helmet());
 app.use(
     cors({
         origin: config.corsOrigins,
         methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+        credentials: true, // allow cookies to be sent in requests
     }),
 );
 
