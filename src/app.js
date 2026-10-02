@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import rateLimit from "express-rate-limit";
+import { apiRateLimit } from "./middlewares/apiRateLimit.js";
 import equipmentRoutes from "./routes/equipmentRoutes.js";
 import requestRoutes from "./routes/requestRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
@@ -27,23 +27,6 @@ app.use(
         methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     }),
 );
-
-const apiRateLimit = rateLimit({
-    windowMs: config.rateLimitWindowMs,
-    max: config.rateLimitMax,
-    standardHeaders: true,
-    legacyHeaders: false,
-    handler: (req, res) => {
-        res.status(429).json({
-            error: {
-                code: "RATE_LIMIT_EXCEEDED",
-                message: "Too many requests",
-                details: [],
-                requestId: req.requestId ?? null,
-            },
-        });
-    },
-});
 
 app.use("/api", apiRateLimit);
 app.use("/api/auth", authRoutes);

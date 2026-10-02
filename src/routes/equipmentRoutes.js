@@ -9,14 +9,8 @@ import {
     equipmentListQuerySchema,
     createEquipmentBodySchema,
     updateEquipmentBodySchema,
+    weatherQuerySchema,
 } from "../validators/equipmentSchemas.js";
-import { z } from "zod";
-
-const weatherQuerySchema = z
-    .object({
-        days: z.coerce.number().int().min(1).max(7).optional(),
-    })
-    .strict();
 
 const router = Router();
 
