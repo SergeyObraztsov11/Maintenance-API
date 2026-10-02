@@ -1,9 +1,9 @@
 import jwt from "jsonwebtoken";
 import { config } from "../config/index.js";
 
-export function signRefreshToken(user) {
+export function signRefreshToken(userId) {
     return jwt.sign(
-        { sub: user.id, type: "refresh" },
+        { sub: userId, type: "refresh" },
         config.jwt.refreshSecret,
         { expiresIn: config.jwt.refreshTtlSeconds },
     );

@@ -19,7 +19,11 @@ export const userRepository = {
         return await User.findOne({ where: { email } });
     },
 
+    async findByEmailWithPassword(email) {
+        return User.scope("withPassword").findOne({ where: { email } });
+    },
+
     async findById(id) {
         return await User.findByPk(id);
-    }
+    },
 };

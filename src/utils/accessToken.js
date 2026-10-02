@@ -1,8 +1,8 @@
 import jwt from "jsonwebtoken";
 import { config } from "../config/index.js";
 
-export function signAccessToken(user) {
-    return jwt.sign({ sub: user.id }, config.jwt.accessSecret, {
+export function signAccessToken(userId) {
+    return jwt.sign({ sub: userId }, config.jwt.accessSecret, {
         expiresIn: config.jwt.accessTtlSeconds,
     });
 }
