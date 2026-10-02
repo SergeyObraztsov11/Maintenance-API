@@ -6,7 +6,7 @@ import {
 import { ConflictError } from "../errors/ConflictError.js";
 import { UnauthorizedError } from "../errors/UnauthorizedError.js";
 import { signAccessToken } from "../utils/accessToken.js";
-import { signRefreshToken } from "../utils/refreshToken.js";
+import { signRefreshToken, verifyRefreshToken } from "../utils/refreshToken.js";
 
 export const authService = {
     async register({ email, password }) {
@@ -44,6 +44,38 @@ export const authService = {
         return {
             accessToken,
             refreshToken,
+            user: {
+                id: user.id,
+                email: user.email,
+                role: user.role,
+                technicianId: user.technicianId,
+            },
+        };
+    },
+    async refresh(refreshToken) {
+        if (!refreshToken) {
+            throw new UnauthorizedError("Refresh token is required");
+        }
+
+        let payload;
+        try {
+            payload = verifyRefreshToken(refreshToken);
+        } catch {
+            throw new UnauthorizedError("Invalid or expired refresh token");
+        }
+
+        const user = await userRepository.findById(payload.sub);
+
+        if (!user) {
+            throw new UnauthorizedError("Invalid or expired refresh token");
+        }
+
+        const newAccessToken = signAccessToken(user.id);
+        const newRefreshToken = signRefreshToken(user.id);
+
+        return {
+            accessToken: newAccessToken,
+            refreshToken: newRefreshToken,
             user: {
                 id: user.id,
                 email: user.email,
