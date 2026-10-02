@@ -23,4 +23,8 @@ export const config = {
         poolMin: Number(process.env.DB_POOL_MIN) || 0,
         poolMax: Number(process.env.DB_POOL_MAX) || 10,
     },
+    jwt: {
+        accessSecret: process.env.JWT_ACCESS_SECRET || "",
+        accessTtlSeconds: Number(process.env.JWT_ACCESS_TTL_SECONDS) || 900,
+    },
 };
