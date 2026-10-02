@@ -12,6 +12,7 @@ import { requestLogger } from "./middlewares/requestLogger.js";
 import { requestId } from "./middlewares/requestId.js";
 import { requireApiKey } from "./middlewares/requireApiKey.js";
 import { config } from "./config/index.js";
+import authRoutes from "./routes/authRoutes.js";
 
 const app = express();
 
@@ -45,6 +46,7 @@ const apiRateLimit = rateLimit({
 });
 
 app.use("/api", apiRateLimit);
+app.use("/api/auth", authRoutes);
 app.use("/api", requireApiKey);
 
 app.get("/api/health", (req, res) => {
