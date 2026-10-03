@@ -8,7 +8,9 @@ import {
     MaintenanceRequest,
     RequestStatusHistory,
     RequestAssignee,
+    User,
 } from "../models/index.js";
+import { bcryptHashPassword } from "../utils/bcryptPassword.js";
 
 async function clearDb() {
     await sequelize.query(`
@@ -18,6 +20,7 @@ async function clearDb() {
             maintenance_requests,
             equipment_passports,
             equipment,
+            users,
             technicians,
             sites
         RESTART IDENTITY CASCADE;
@@ -134,6 +137,26 @@ async function seed() {
         employeeNumber: "T-005",
     });
 
+    // 4b) Users (password for all: password123)
+    const passwordHash = await bcryptHashPassword("password123");
+
+    await User.create({
+        email: "admin@example.com",
+        passwordHash,
+        role: "admin",
+    });
+    await User.create({
+        email: "tech@example.com",
+        passwordHash,
+        role: "technician",
+        technicianId: t1.id,
+    });
+    await User.create({
+        email: "viewer@example.com",
+        passwordHash,
+        role: "viewer",
+    });
+
     // 5) Requests
     const statuses = ["new", "in_progress", "done"];
     const priorities = ["low", "medium", "high", "critical"];
@@ -206,6 +229,7 @@ async function seed() {
     console.log("- sites: 2");
     console.log("- equipment: 6");
     console.log("- technicians: 5");
+    console.log("- users: 3");
     console.log("- requests: 20");
 
     await closeDB();
