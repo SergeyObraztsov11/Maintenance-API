@@ -56,6 +56,7 @@ export const requestController = {
             const item = await requestService.changeStatus(
                 req.params.id,
                 req.body.status,
+                req.user,
             );
             res.status(200).json({ data: item });
         } catch (error) {

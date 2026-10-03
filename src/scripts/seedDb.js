@@ -8,7 +8,9 @@ import {
     MaintenanceRequest,
     RequestStatusHistory,
     RequestAssignee,
+    User,
 } from "../models/index.js";
+import { bcryptHashPassword } from "../utils/bcryptPassword.js";
 
 async function clearDb() {
     await sequelize.query(`
@@ -18,6 +20,7 @@ async function clearDb() {
             maintenance_requests,
             equipment_passports,
             equipment,
+            users,
             technicians,
             sites
         RESTART IDENTITY CASCADE;
@@ -134,6 +137,50 @@ async function seed() {
         employeeNumber: "T-005",
     });
 
+    // 4b) Users (password for all: password123)
+    const passwordHash = await bcryptHashPassword("password123");
+
+    await User.create({
+        email: "admin@example.com",
+        passwordHash,
+        role: "admin",
+    });
+    await User.create({
+        email: "viewer@example.com",
+        passwordHash,
+        role: "viewer",
+    });
+    await User.create({
+        email: "tech1@example.com",
+        passwordHash,
+        role: "technician",
+        technicianId: t1.id,
+    });
+    await User.create({
+        email: "tech2@example.com",
+        passwordHash,
+        role: "technician",
+        technicianId: t2.id,
+    });
+    await User.create({
+        email: "tech3@example.com",
+        passwordHash,
+        role: "technician",
+        technicianId: t3.id,
+    });
+    await User.create({
+        email: "tech4@example.com",
+        passwordHash,
+        role: "technician",
+        technicianId: t4.id,
+    });
+    await User.create({
+        email: "tech5@example.com",
+        passwordHash,
+        role: "technician",
+        technicianId: t5.id,
+    });
+
     // 5) Requests
     const statuses = ["new", "in_progress", "done"];
     const priorities = ["low", "medium", "high", "critical"];
@@ -170,7 +217,9 @@ async function seed() {
         comment: "Finished",
     });
 
-    // 7) Assignees
+    // 7) Assignees (hardcoded for easy Postman tests)
+    // requests[0], requests[3] — empty (test 409 in_progress without assignees)
+
     await RequestAssignee.create({
         requestId: requests[1].id,
         technicianId: t1.id,
@@ -183,18 +232,50 @@ async function seed() {
         role: "member",
         hours: 4,
     });
+
+    await RequestAssignee.create({
+        requestId: requests[2].id,
+        technicianId: t2.id,
+        role: "lead",
+        hours: 6,
+    });
+
     await RequestAssignee.create({
         requestId: requests[4].id,
         technicianId: t3.id,
         role: "lead",
         hours: 6,
     });
+
+    await RequestAssignee.create({
+        requestId: requests[5].id,
+        technicianId: t1.id,
+        role: "lead",
+        hours: 5,
+    });
+
+    // Request #7 (index 6) is status "new" — good for tech1 status change tests
+    await RequestAssignee.create({
+        requestId: requests[6].id,
+        technicianId: t1.id,
+        role: "lead",
+        hours: 4,
+    });
+
     await RequestAssignee.create({
         requestId: requests[7].id,
         technicianId: t4.id,
         role: "lead",
         hours: 3,
     });
+
+    await RequestAssignee.create({
+        requestId: requests[8].id,
+        technicianId: t5.id,
+        role: "lead",
+        hours: 4,
+    });
+
     await RequestAssignee.create({
         requestId: requests[10].id,
         technicianId: t5.id,
@@ -206,7 +287,8 @@ async function seed() {
     console.log("- sites: 2");
     console.log("- equipment: 6");
     console.log("- technicians: 5");
-    console.log("- requests: 20");
+    console.log("- users: admin, viewer, tech1..tech5 / password123");
+    console.log("- requests: 20 (requests[0] and [3] have no assignees)");
 
     await closeDB();
 }

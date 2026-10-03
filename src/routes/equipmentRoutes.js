@@ -4,19 +4,14 @@ import { Router } from "express";
 import { equipmentController } from "../controllers/equipmentController.js";
 import { requestController } from "../controllers/requestController.js";
 import { validate } from "../middlewares/validate.js";
+import { allowedRoles } from "../middlewares/allowedRoles.js";
 import {
     equipmentIdParamsSchema,
     equipmentListQuerySchema,
     createEquipmentBodySchema,
     updateEquipmentBodySchema,
+    weatherQuerySchema,
 } from "../validators/equipmentSchemas.js";
-import { z } from "zod";
-
-const weatherQuerySchema = z
-    .object({
-        days: z.coerce.number().int().min(1).max(7).optional(),
-    })
-    .strict();
 
 const router = Router();
 
@@ -28,6 +23,7 @@ router.get(
 
 router.post(
     "/",
+    allowedRoles(["admin"]),
     validate({ body: createEquipmentBodySchema }),
     equipmentController.create,
 );
@@ -55,6 +51,7 @@ router.get(
 
 router.patch(
     "/:id",
+    allowedRoles(["admin"]),
     validate({
         params: equipmentIdParamsSchema,
         body: updateEquipmentBodySchema,
@@ -64,6 +61,7 @@ router.patch(
 
 router.delete(
     "/:id",
+    allowedRoles(["admin"]),
     validate({ params: equipmentIdParamsSchema }),
     equipmentController.remove,
 );

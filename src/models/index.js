@@ -5,6 +5,7 @@ import { Technician } from "./Technician.js";
 import { MaintenanceRequest } from "./MaintenanceRequest.js";
 import { RequestStatusHistory } from "./RequestStatusHistory.js";
 import { RequestAssignee } from "./RequestAssignee.js";
+import { User } from "./User.js";
 
 // Site 1:N Equipment
 Site.hasMany(Equipment, { foreignKey: "siteId", as: "equipment" });
@@ -71,6 +72,9 @@ Technician.hasMany(RequestAssignee, {
     as: "assignments",
 });
 
+User.belongsTo(Technician, { foreignKey: "technicianId", as: "technician" });
+Technician.hasOne(User, { foreignKey: "technicianId", as: "user" });
+
 export const models = {
     Site,
     Equipment,
@@ -79,6 +83,7 @@ export const models = {
     MaintenanceRequest,
     RequestStatusHistory,
     RequestAssignee,
+    User,
 };
 
 export {
@@ -89,4 +94,5 @@ export {
     MaintenanceRequest,
     RequestStatusHistory,
     RequestAssignee,
+    User,
 };

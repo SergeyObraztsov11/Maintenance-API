@@ -23,4 +23,18 @@ export const config = {
         poolMin: Number(process.env.DB_POOL_MIN) || 0,
         poolMax: Number(process.env.DB_POOL_MAX) || 10,
     },
+    jwt: {
+        accessSecret: process.env.JWT_ACCESS_SECRET || "",
+        accessTtlSeconds: Number(process.env.JWT_ACCESS_TTL_SECONDS) || 900,
+        refreshSecret: process.env.JWT_REFRESH_SECRET || "",
+        refreshTtlSeconds:
+            Number(process.env.JWT_REFRESH_TTL_SECONDS) || 604800,
+    },
+    refreshCookie: {
+        name: process.env.REFRESH_COOKIE_NAME || "refreshToken",
+        sameSite: process.env.REFRESH_COOKIE_SAMESITE || "lax",
+        secure: process.env.NODE_ENV === "production",
+        httpOnly: true,
+        path: "/api/auth",
+    },
 };

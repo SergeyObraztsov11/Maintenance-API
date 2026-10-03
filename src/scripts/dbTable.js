@@ -12,6 +12,7 @@ const allowed = new Set([
     "request_status_history",
     "request_assignees",
     "SequelizeMeta",
+    "users",
 ]);
 
 if (!mode || !table || !["structure", "data"].includes(mode)) {
