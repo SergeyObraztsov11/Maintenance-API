@@ -10,7 +10,7 @@ import { errorHandler } from "./middlewares/errorHandler.js";
 import { notFoundHandler } from "./middlewares/notFoundHandler.js";
 import { requestLogger } from "./middlewares/requestLogger.js";
 import { requestId } from "./middlewares/requestId.js";
-import { requireApiKey } from "./middlewares/requireApiKey.js";
+import { authenticate } from "./middlewares/authenticate.js";
 import { config } from "./config/index.js";
 import authRoutes from "./routes/authRoutes.js";
 import cookieParser from "cookie-parser";
@@ -32,16 +32,17 @@ app.use(
 
 app.use("/api", apiRateLimit);
 app.use("/api/auth", authRoutes);
-app.use("/api", requireApiKey);
 
 app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
 });
+app.use("/api", authenticate);
 
 app.use("/api/equipment", equipmentRoutes);
 app.use("/api/requests", requestRoutes);
 app.use("/api/sites", siteRoutes);
 app.use("/api/reports", reportRoutes);
+
 app.use(notFoundHandler);
 app.use(errorHandler);
 

@@ -4,6 +4,7 @@ import { Router } from "express";
 import { equipmentController } from "../controllers/equipmentController.js";
 import { requestController } from "../controllers/requestController.js";
 import { validate } from "../middlewares/validate.js";
+import { allowedRoles } from "../middlewares/allowedRoles.js";
 import {
     equipmentIdParamsSchema,
     equipmentListQuerySchema,
@@ -22,6 +23,7 @@ router.get(
 
 router.post(
     "/",
+    allowedRoles(["admin"]),
     validate({ body: createEquipmentBodySchema }),
     equipmentController.create,
 );
@@ -49,6 +51,7 @@ router.get(
 
 router.patch(
     "/:id",
+    allowedRoles(["admin"]),
     validate({
         params: equipmentIdParamsSchema,
         body: updateEquipmentBodySchema,
@@ -58,6 +61,7 @@ router.patch(
 
 router.delete(
     "/:id",
+    allowedRoles(["admin"]),
     validate({ params: equipmentIdParamsSchema }),
     equipmentController.remove,
 );
