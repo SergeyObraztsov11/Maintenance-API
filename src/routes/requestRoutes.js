@@ -10,6 +10,7 @@ import {
     setAssigneesBodySchema,
     assigneeParamsSchema,
 } from "../validators/requestSchemas.js";
+import { allowedRoles } from "../middlewares/allowedRoles.js";
 
 const router = Router();
 
@@ -20,11 +21,13 @@ router.get(
 );
 router.post(
     "/",
+    allowedRoles(["admin", "technician"]),
     validate({ body: createRequestBodySchema }),
     requestController.create,
 );
 router.patch(
     "/:id/status",
+    allowedRoles(["admin", "technician"]),
     validate({
         params: requestIdParamsSchema,
         body: changeStatusBodySchema,
@@ -38,11 +41,13 @@ router.get(
 );
 router.delete(
     "/:id/assignees/:technicianId",
+    allowedRoles(["admin"]),
     validate({ params: assigneeParamsSchema }),
     requestController.removeAssignee,
 );
 router.post(
     "/:id/assignees",
+    allowedRoles(["admin"]),
     validate({
         params: requestIdParamsSchema,
         body: setAssigneesBodySchema,
@@ -56,6 +61,7 @@ router.get(
 );
 router.patch(
     "/:id",
+    allowedRoles(["technician", "admin"]),
     validate({
         params: requestIdParamsSchema,
         body: updateRequestBodySchema,
@@ -64,6 +70,7 @@ router.patch(
 );
 router.delete(
     "/:id",
+    allowedRoles(["admin"]),
     validate({ params: requestIdParamsSchema }),
     requestController.remove,
 );
