@@ -3,7 +3,7 @@ import { sequelize } from "../db/index.js";
 
 const router = Router();
 
-router.get("/live", async (req, res) => {
+router.get("/live", (req, res) => {
     res.status(200).json({
         status: "ok",
         uptime: Math.floor(process.uptime()),
