@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Maintenance API",
-    "description": "Case 4: Maintenance API with JWT auth.\n\nVariables: baseUrl, accessToken, equipmentId, requestId, serialNumber, technicianId, technicianId2, siteId.\n\nSeed users (npm run seed), password for all: password123\n- admin@example.com (admin)\n- tech@example.com (technician, linked to Ivan Petrov)\n- viewer@example.com (viewer)\n\nSuggested order: Health → Auth (Login admin) → Setup → Equipment/Requests/Reports.\nRequires: docker db up, migrate, seed, npm start.\nRefresh/Logout use httpOnly cookie (Postman cookie jar).",
+    "description": "Case 4: Maintenance API with JWT auth.\n\nVariables: baseUrl, accessToken, equipmentId, requestId, serialNumber, technicianId, technicianId2, siteId.\n\nSeed users (npm run seed), password for all: password123\n- admin@example.com (admin)\n- viewer@example.com (viewer)\n- tech1@example.com ... tech5@example.com (technicians t1...t5)\n\nFlow: Login -> GET list requests -> paste id into requestId -> edit body -> Send.\nRefresh/Logout use httpOnly cookie (Postman cookie jar).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -18,8 +18,12 @@
       "value": "admin@example.com"
     },
     {
-      "key": "techEmail",
-      "value": "tech@example.com"
+      "key": "tech1Email",
+      "value": "tech1@example.com"
+    },
+    {
+      "key": "tech2Email",
+      "value": "tech2@example.com"
     },
     {
       "key": "viewerEmail",
@@ -176,7 +180,7 @@
           }
         },
         {
-          "name": "POST login technician",
+          "name": "POST login tech1",
           "event": [
             {
               "listen": "test",
@@ -204,10 +208,45 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"{{techEmail}}\",\n  \"password\": \"{{password}}\"\n}"
+              "raw": "{\n  \"email\": \"{{tech1Email}}\",\n  \"password\": \"{{password}}\"\n}"
             },
             "url": "{{baseUrl}}/api/auth/login",
-            "description": "Sets collection variable accessToken. Sets refreshToken httpOnly cookie."
+            "description": "Ivan Petrov (t1). Sets accessToken."
+          }
+        },
+        {
+          "name": "POST login tech2",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body?.data?.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', body.data.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{tech2Email}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Anna Smirnova (t2). Sets accessToken."
           }
         },
         {
@@ -534,6 +573,15 @@
             "header": [],
             "url": "{{baseUrl}}/api/equipment/{{equipmentId}}/requests"
           }
+        },
+        {
+          "name": "DELETE equipment",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/equipment/{{equipmentId}}",
+            "description": "204 if no open requests; 409 if open requests exist."
+          }
         }
       ]
     },
@@ -642,7 +690,7 @@
           }
         },
         {
-          "name": "PATCH change status to in_progress",
+          "name": "PATCH change status",
           "request": {
             "method": "PATCH",
             "header": [
@@ -655,7 +703,8 @@
               "mode": "raw",
               "raw": "{\n  \"status\": \"in_progress\"\n}"
             },
-            "url": "{{baseUrl}}/api/requests/{{requestId}}/status"
+            "url": "{{baseUrl}}/api/requests/{{requestId}}/status",
+            "description": "Set requestId yourself. Edit status in the body (new → in_progress | rejected; in_progress → done | rejected)."
           }
         },
         {
@@ -680,15 +729,6 @@
             "method": "DELETE",
             "header": [],
             "url": "{{baseUrl}}/api/requests/{{requestId}}"
-          }
-        },
-        {
-          "name": "DELETE equipment",
-          "request": {
-            "method": "DELETE",
-            "header": [],
-            "url": "{{baseUrl}}/api/equipment/{{equipmentId}}",
-            "description": "Run after DELETE request. 204 if no open requests; 409 if open requests exist."
           }
         }
       ]

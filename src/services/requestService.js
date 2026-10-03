@@ -6,6 +6,7 @@ import { ConflictError } from "../errors/ConflictError.js";
 import { ValidationError } from "../errors/ValidationError.js";
 import { Technician } from "../models/index.js";
 import { Op } from "sequelize";
+import { ForbiddenError } from "../errors/ForbiddenError.js";
 
 // Бизнес-логика заявок: правила, статусы, привязка к оборудованию.
 const ALLOWED_TRANSITIONS = {
@@ -68,9 +69,34 @@ export const requestService = {
 
         return requestRepository.update(id, patch);
     },
-    async changeStatus(id, status) {
+    async changeStatus(id, status, user) {
         const request = await this.getById(id);
+
+        // Только админ и техник может менять статус заявки
+        if (user.role !== "admin" && user.role !== "technician") {
+            throw new ForbiddenError(
+                "No access to change the status of this request",
+            );
+        }
+        // Техник может менять только свои заяки. Админ все
+        if (user.role === "technician") {
+            let isAssigned = false;
+
+            for (const assignee of request.assignees ?? []) {
+                if (assignee.technician?.id === user.technicianId) {
+                    isAssigned = true;
+                    break;
+                }
+            }
+            if (!isAssigned) {
+                throw new ForbiddenError(
+                    "No access to change the status of this request.",
+                );
+            }
+        }
+
         const allowed = ALLOWED_TRANSITIONS[request.status] ?? [];
+
         if (!allowed.includes(status)) {
             throw new ConflictError(
                 `Cannot change status from ${request.status} to ${status}`,
@@ -85,11 +111,13 @@ export const requestService = {
                 );
             }
         }
+
         const updated = await requestRepository.changeStatus(id, {
             status,
             changedBy: "api",
             comment: null,
         });
+
         return updated;
     },
     async getStatusHistory(id) {
@@ -103,7 +131,9 @@ export const requestService = {
     async setAssignees(requestId, assignees) {
         await this.getById(requestId);
 
-        const leadCount = assignees.filter((item) => item.role === "lead").length;
+        const leadCount = assignees.filter(
+            (item) => item.role === "lead",
+        ).length;
         if (leadCount !== 1) {
             throw new ValidationError("Crew must contain exactly one lead", [
                 { field: "assignees", message: "Exactly one lead is required" },
