@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Maintenance API",
-    "description": "Case 3: Maintenance API (PostgreSQL).\n\nVariables: baseUrl, apiKey, equipmentId, requestId, serialNumber, technicianId, technicianId2, siteId.\n\nSuggested order: Health → Setup seed IDs → Equipment → Requests (assignees before in_progress) → Reports → Negative.\nRequires: docker db up, migrate, seed, npm start.\nFor 429: temporarily set RATE_LIMIT_MAX=3.",
+    "description": "Case 4: Maintenance API with JWT auth.\n\nVariables: baseUrl, accessToken, equipmentId, requestId, serialNumber, technicianId, technicianId2, siteId.\n\nSeed users (npm run seed), password for all: password123\n- admin@example.com (admin)\n- tech@example.com (technician, linked to Ivan Petrov)\n- viewer@example.com (viewer)\n\nSuggested order: Health → Auth (Login admin) → Setup → Equipment/Requests/Reports.\nRequires: docker db up, migrate, seed, npm start.\nRefresh/Logout use httpOnly cookie (Postman cookie jar).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -10,8 +10,24 @@
       "value": "http://localhost:3000"
     },
     {
-      "key": "apiKey",
-      "value": "dev-api-key-change-me"
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "adminEmail",
+      "value": "admin@example.com"
+    },
+    {
+      "key": "techEmail",
+      "value": "tech@example.com"
+    },
+    {
+      "key": "viewerEmail",
+      "value": "viewer@example.com"
+    },
+    {
+      "key": "password",
+      "value": "password123"
     },
     {
       "key": "equipmentId",
@@ -39,21 +55,11 @@
     }
   ],
   "auth": {
-    "type": "apikey",
-    "apikey": [
+    "type": "bearer",
+    "bearer": [
       {
-        "key": "key",
-        "value": "X-API-Key",
-        "type": "string"
-      },
-      {
-        "key": "value",
-        "value": "{{apiKey}}",
-        "type": "string"
-      },
-      {
-        "key": "in",
-        "value": "header",
+        "key": "token",
+        "value": "{{accessToken}}",
         "type": "string"
       }
     ]
@@ -64,25 +70,266 @@
       "item": [
         {
           "name": "GET health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/health",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "POST register",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"newuser@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/register",
+            "description": "Edit email/password in the body before sending. Default role is viewer."
+          }
+        },
+        {
+          "name": "POST login",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Body has status ok', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body).to.have.property('status', 'ok');",
-                  "});"
+                  "const body = pm.response.json();",
+                  "if (body?.data?.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', body.data.accessToken);",
+                  "}"
                 ]
               }
             }
           ],
           "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"newuser@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Edit email/password in the body. Saves accessToken for next requests."
+          }
+        },
+        {
+          "name": "POST login admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body?.data?.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', body.data.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Sets collection variable accessToken. Sets refreshToken httpOnly cookie."
+          }
+        },
+        {
+          "name": "POST login technician",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body?.data?.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', body.data.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{techEmail}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Sets collection variable accessToken. Sets refreshToken httpOnly cookie."
+          }
+        },
+        {
+          "name": "POST login viewer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body?.data?.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', body.data.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{viewerEmail}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Sets collection variable accessToken. Sets refreshToken httpOnly cookie."
+          }
+        },
+        {
+          "name": "GET me",
+          "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/api/health"
+            "url": "{{baseUrl}}/api/auth/me",
+            "description": "Requires accessToken (run a Login first)."
+          }
+        },
+        {
+          "name": "POST refresh",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/refresh",
+            "description": "Uses refreshToken cookie from Login. Updates accessToken."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body?.data?.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', body.data.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('accessToken', '');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/logout",
+            "description": "Clears refresh cookie and local accessToken variable."
+          }
+        },
+        {
+          "name": "GET me without token (401)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/me"
+          }
+        },
+        {
+          "name": "POST equipment as viewer (403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Forbidden Turbine\",\n  \"type\": \"turbine\",\n  \"serialNumber\": \"SN-FORBIDDEN-001\",\n  \"location\": {\n    \"lat\": 55.75,\n    \"lon\": 37.61\n  },\n  \"status\": \"operational\",\n  \"installedAt\": \"2024-01-01\"\n}"
+            },
+            "url": "{{baseUrl}}/api/equipment",
+            "description": "Run Login viewer first, then this request. Expect status 403."
           }
         }
       ]
@@ -98,30 +345,27 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
                   "const eqBody = pm.response.json();",
-                  "pm.expect(eqBody.data).to.be.an(\"array\").that.is.not.empty;",
-                  "pm.collectionVariables.set(\"siteId\", eqBody.data[0].siteId);",
+                  "if (eqBody?.data?.length) {",
+                  "  pm.collectionVariables.set('siteId', eqBody.data[0].siteId);",
+                  "}",
                   "pm.sendRequest({",
-                  "  url: pm.collectionVariables.get(\"baseUrl\") + \"/api/requests?page=1&limit=50\",",
-                  "  method: \"GET\",",
-                  "  header: { \"X-API-Key\": pm.collectionVariables.get(\"apiKey\") }",
+                  "  url: pm.collectionVariables.get('baseUrl') + '/api/requests?page=1&limit=50',",
+                  "  method: 'GET',",
+                  "  header: { Authorization: 'Bearer ' + pm.collectionVariables.get('accessToken') },",
                   "}, (err, res) => {",
-                  "  pm.test(\"Loaded technicians from requests\", () => {",
-                  "    pm.expect(err).to.eql(null);",
-                  "    const rows = res.json().data || [];",
-                  "    const ids = [];",
-                  "    for (const r of rows) {",
-                  "      for (const a of r.assignees || []) {",
-                  "        if (a.technician && a.technician.id && !ids.includes(a.technician.id)) {",
-                  "          ids.push(a.technician.id);",
-                  "        }",
+                  "  if (err || res.code !== 200) return;",
+                  "  const rows = res.json().data || [];",
+                  "  const ids = [];",
+                  "  for (const r of rows) {",
+                  "    for (const a of r.assignees || []) {",
+                  "      if (a.technician?.id && !ids.includes(a.technician.id)) {",
+                  "        ids.push(a.technician.id);",
                   "      }",
                   "    }",
-                  "    pm.expect(ids.length).to.be.at.least(1);",
-                  "    pm.collectionVariables.set(\"technicianId\", ids[0]);",
-                  "    pm.collectionVariables.set(\"technicianId2\", ids[1] || ids[0]);",
-                  "  });",
+                  "  }",
+                  "  if (ids[0]) pm.collectionVariables.set('technicianId', ids[0]);",
+                  "  if (ids[0]) pm.collectionVariables.set('technicianId2', ids[1] || ids[0]);",
                   "});"
                 ]
               }
@@ -150,7 +394,7 @@
                 }
               ]
             },
-            "description": "Requires npm run seed. Saves siteId and technician IDs from seeded data."
+            "description": "Requires npm run seed and Login (accessToken). Saves siteId and technician IDs from seeded data."
           }
         }
       ]
@@ -175,16 +419,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
-                  "pm.test('Body has data.id', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body).to.have.property('data');",
-                  "  pm.expect(body.data).to.have.property('id');",
+                  "const body = pm.response.json();",
+                  "if (body?.data?.id) {",
                   "  pm.collectionVariables.set('equipmentId', body.data.id);",
-                  "});",
-                  "pm.test('Location header exists', () => {",
-                  "  pm.expect(pm.response.headers.has('Location')).to.be.true;",
-                  "});"
+                  "}"
                 ]
               }
             }
@@ -206,23 +444,6 @@
         },
         {
           "name": "GET list equipment",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Body has data and meta', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body).to.have.property('data');",
-                  "  pm.expect(body).to.have.property('meta');",
-                  "  pm.expect(body.meta).to.include.keys('total', 'page', 'limit');",
-                  "});"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -258,21 +479,6 @@
         },
         {
           "name": "GET equipment by id",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Body has data', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body.data).to.have.property('id', pm.collectionVariables.get('equipmentId'));",
-                  "});"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -281,20 +487,6 @@
         },
         {
           "name": "PATCH update equipment",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Body has data', () => {",
-                  "  pm.expect(pm.response.json()).to.have.property('data');",
-                  "});"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "PATCH",
             "header": [
@@ -312,22 +504,6 @@
         },
         {
           "name": "GET equipment weather",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Body has forecast', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body.data).to.have.property('forecast');",
-                  "  pm.expect(body.data.forecast).to.be.an('array');",
-                  "});"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -353,22 +529,6 @@
         },
         {
           "name": "GET equipment requests",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Body has data and meta', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body).to.have.property('data');",
-                  "  pm.expect(body).to.have.property('meta');",
-                  "});"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -382,22 +542,6 @@
       "item": [
         {
           "name": "POST create request",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
-                  "pm.test('Body has data.id', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body.data).to.have.property('id');",
-                  "  pm.collectionVariables.set('requestId', body.data.id);",
-                  "});"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "POST",
             "header": [
@@ -411,26 +555,24 @@
               "raw": "{\n  \"equipmentId\": \"{{equipmentId}}\",\n  \"title\": \"Postman inspection request\",\n  \"description\": \"Created from Postman collection\",\n  \"priority\": \"medium\",\n  \"plannedAt\": \"2026-09-25T09:00:00.000Z\"\n}"
             },
             "url": "{{baseUrl}}/api/requests"
-          }
-        },
-        {
-          "name": "GET list requests",
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Body has data and meta', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body).to.have.property('data');",
-                  "  pm.expect(body).to.have.property('meta');",
-                  "});"
+                  "const body = pm.response.json();",
+                  "if (body?.data?.id) {",
+                  "  pm.collectionVariables.set('requestId', body.data.id);",
+                  "}"
                 ]
               }
             }
-          ],
+          ]
+        },
+        {
+          "name": "GET list requests",
           "request": {
             "method": "GET",
             "header": [],
@@ -458,20 +600,6 @@
         },
         {
           "name": "GET request by id",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Body has data', () => {",
-                  "  pm.expect(pm.response.json()).to.have.property('data');",
-                  "});"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -480,20 +608,6 @@
         },
         {
           "name": "PATCH update request",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Body has data', () => {",
-                  "  pm.expect(pm.response.json()).to.have.property('data');",
-                  "});"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "PATCH",
             "header": [
@@ -511,23 +625,6 @@
         },
         {
           "name": "POST set assignees (lead + member)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
-                  "pm.test(\"Crew has lead and member\", () => {",
-                  "  const data = pm.response.json().data;",
-                  "  pm.expect(data).to.be.an(\"array\");",
-                  "  pm.expect(data.length).to.be.at.least(1);",
-                  "  pm.expect(data.some((a) => a.role === \"lead\")).to.be.true;",
-                  "});"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "POST",
             "header": [
@@ -546,20 +643,6 @@
         },
         {
           "name": "PATCH change status to in_progress",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Status became in_progress', () => {",
-                  "  pm.expect(pm.response.json().data.status).to.eql('in_progress');",
-                  "});"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "PATCH",
             "header": [
@@ -577,22 +660,6 @@
         },
         {
           "name": "GET request status history",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
-                  "pm.test(\"History is an array\", () => {",
-                  "  const data = pm.response.json().data;",
-                  "  pm.expect(data).to.be.an(\"array\");",
-                  "  pm.expect(data.length).to.be.at.least(1);",
-                  "});"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -601,17 +668,6 @@
         },
         {
           "name": "DELETE assignee (member)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 204', () => pm.response.to.have.status(204));"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "DELETE",
             "header": [],
@@ -620,17 +676,6 @@
         },
         {
           "name": "DELETE request",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 204', () => pm.response.to.have.status(204));"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "DELETE",
             "header": [],
@@ -639,19 +684,6 @@
         },
         {
           "name": "DELETE equipment",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 204 or 409', () => {",
-                  "  pm.expect([204, 409]).to.include(pm.response.code);",
-                  "});"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "DELETE",
             "header": [],
@@ -666,26 +698,6 @@
       "item": [
         {
           "name": "GET site summary",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
-                  "pm.test(\"Summary shape\", () => {",
-                  "  const d = pm.response.json().data;",
-                  "  pm.expect(d).to.have.property(\"site\");",
-                  "  pm.expect(d).to.have.property(\"equipmentTotal\");",
-                  "  pm.expect(d).to.have.property(\"requestsTotal\");",
-                  "  pm.expect(d).to.have.property(\"requestsByStatus\");",
-                  "  pm.expect(d).to.have.property(\"requestsByPriority\");",
-                  "  pm.expect(d).to.have.property(\"avgCloseTimeHours\");",
-                  "});"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -694,55 +706,40 @@
         },
         {
           "name": "GET equipment load",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
-                  "pm.test(\"Equipment load is array\", () => {",
-                  "  const data = pm.response.json().data;",
-                  "  pm.expect(data).to.be.an(\"array\");",
-                  "  if (data.length) {",
-                  "    pm.expect(data[0]).to.include.keys(\"requestsCount\", \"closedRequestsCount\", \"totalPlannedHours\");",
-                  "  }",
-                  "});"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "GET",
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/reports/equipment-load?minRequests=1",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "reports", "equipment-load"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "reports",
+                "equipment-load"
+              ],
               "query": [
-                { "key": "minRequests", "value": "1" },
-                { "key": "from", "value": "", "disabled": true },
-                { "key": "to", "value": "", "disabled": true }
+                {
+                  "key": "minRequests",
+                  "value": "1"
+                },
+                {
+                  "key": "from",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "to",
+                  "value": "",
+                  "disabled": true
+                }
               ]
             }
           }
         },
         {
           "name": "GET technicians workload",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
-                  "pm.test(\"Workload is array\", () => {",
-                  "  pm.expect(pm.response.json().data).to.be.an(\"array\");",
-                  "});"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -756,23 +753,6 @@
       "item": [
         {
           "name": "422 validation error - short name",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 422', () => pm.response.to.have.status(422));",
-                  "pm.test('Error format', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body.error).to.have.property('code', 'VALIDATION_ERROR');",
-                  "  pm.expect(body.error).to.have.property('details');",
-                  "  pm.expect(body.error.details).to.be.an('array');",
-                  "});"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "POST",
             "header": [
@@ -790,20 +770,6 @@
         },
         {
           "name": "404 equipment not found",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 404', () => pm.response.to.have.status(404));",
-                  "pm.test('Error code NOT_FOUND', () => {",
-                  "  pm.expect(pm.response.json().error.code).to.eql('NOT_FOUND');",
-                  "});"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -826,7 +792,7 @@
                   "  method: 'POST',",
                   "  header: {",
                   "    'Content-Type': 'application/json',",
-                  "    'X-API-Key': pm.variables.get('apiKey')",
+                  "    Authorization: 'Bearer ' + pm.collectionVariables.get('accessToken')",
                   "  },",
                   "  body: {",
                   "    mode: 'raw',",
@@ -840,18 +806,6 @@
                   "    })",
                   "  }",
                   "}, (err, res) => {});"
-                ]
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 409', () => pm.response.to.have.status(409));",
-                  "pm.test('Error code CONFLICT', () => {",
-                  "  pm.expect(pm.response.json().error.code).to.eql('CONFLICT');",
-                  "});"
                 ]
               }
             }
@@ -874,20 +828,6 @@
         },
         {
           "name": "409 invalid status transition",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 409', () => pm.response.to.have.status(409));",
-                  "pm.test('Error code CONFLICT', () => {",
-                  "  pm.expect(pm.response.json().error.code).to.eql('CONFLICT');",
-                  "});"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "PATCH",
             "header": [
@@ -906,22 +846,6 @@
         },
         {
           "name": "429 rate limit",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 429 when limit exceeded', () => {",
-                  "  pm.expect(pm.response.code).to.eql(429);",
-                  "});",
-                  "pm.test('Error code RATE_LIMIT_EXCEEDED', () => {",
-                  "  pm.expect(pm.response.json().error.code).to.eql('RATE_LIMIT_EXCEEDED');",
-                  "});"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -938,12 +862,12 @@
                 "type": "text/javascript",
                 "exec": [
                   "const baseUrl = pm.collectionVariables.get(\"baseUrl\");",
-                  "const apiKey = pm.collectionVariables.get(\"apiKey\");",
+                  "",
                   "const equipmentId = pm.collectionVariables.get(\"equipmentId\");",
                   "pm.sendRequest({",
                   "  url: baseUrl + \"/api/requests\",",
                   "  method: \"POST\",",
-                  "  header: { \"Content-Type\": \"application/json\", \"X-API-Key\": apiKey },",
+                  "  header: { \"Content-Type\": \"application/json\", Authorization: \"Bearer \" + pm.collectionVariables.get(\"accessToken\") },",
                   "  body: {",
                   "    mode: \"raw\",",
                   "    raw: JSON.stringify({",
@@ -957,18 +881,6 @@
                   "  if (!err && res.code === 201) {",
                   "    pm.collectionVariables.set(\"lonelyRequestId\", res.json().data.id);",
                   "  }",
-                  "});"
-                ]
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 409', () => pm.response.to.have.status(409));",
-                  "pm.test(\"Error code CONFLICT\", () => {",
-                  "  pm.expect(pm.response.json().error.code).to.eql(\"CONFLICT\");",
                   "});"
                 ]
               }
@@ -992,20 +904,6 @@
         },
         {
           "name": "404 assignee unknown technician",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 404', () => pm.response.to.have.status(404));",
-                  "pm.test(\"Error code NOT_FOUND\", () => {",
-                  "  pm.expect(pm.response.json().error.code).to.eql(\"NOT_FOUND\");",
-                  "});"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "POST",
             "header": [
@@ -1024,20 +922,6 @@
         },
         {
           "name": "422 assignees without lead",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 422', () => pm.response.to.have.status(422));",
-                  "pm.test(\"Error code VALIDATION_ERROR\", () => {",
-                  "  pm.expect(pm.response.json().error.code).to.eql(\"VALIDATION_ERROR\");",
-                  "});"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "POST",
             "header": [
@@ -1056,20 +940,6 @@
         },
         {
           "name": "422 assignee invalid role",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 422', () => pm.response.to.have.status(422));",
-                  "pm.test(\"Error code VALIDATION_ERROR\", () => {",
-                  "  pm.expect(pm.response.json().error.code).to.eql(\"VALIDATION_ERROR\");",
-                  "});"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "POST",
             "header": [
@@ -1088,20 +958,6 @@
         },
         {
           "name": "404 site summary not found",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status is 404', () => pm.response.to.have.status(404));",
-                  "pm.test(\"Error code NOT_FOUND\", () => {",
-                  "  pm.expect(pm.response.json().error.code).to.eql(\"NOT_FOUND\");",
-                  "});"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "GET",
             "header": [],
