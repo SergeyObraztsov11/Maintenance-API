@@ -6,6 +6,7 @@ import equipmentRoutes from "./routes/equipmentRoutes.js";
 import requestRoutes from "./routes/requestRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
 import siteRoutes from "./routes/siteRoutes.js";
+import healthRoutes from "./routes/healthRoutes.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
 import { notFoundHandler } from "./middlewares/notFoundHandler.js";
 import { requestLogger } from "./middlewares/requestLogger.js";
@@ -31,11 +32,10 @@ app.use(
 );
 
 app.use("/api", apiRateLimit);
+app.use("/api/health", healthRoutes);
+
 app.use("/api/auth", authRoutes);
 
-app.get("/api/health", (req, res) => {
-    res.json({ status: "ok" });
-});
 app.use("/api", authenticate);
 
 app.use("/api/equipment", equipmentRoutes);
