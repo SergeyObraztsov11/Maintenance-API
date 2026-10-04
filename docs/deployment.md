@@ -144,6 +144,22 @@ Prometheus скрейпит `host.docker.internal:3000`.
 
 В каждой записи API есть `requestId` (также в заголовке ответа и в теле ошибки). По нему связывают лог и конкретный HTTP-запрос.
 
+### Сквозная трассировка `requestId`
+
+```text
+Nginx ($request_id → заголовок X-Request-Id)
+  → API (middleware requestId)
+  → JSON-лог + тело ошибки + заголовок ответа X-Request-Id
+  → панель «Сквозная трассировка» на дашборде API Technical Metrics
+```
+
+1. Сделать запрос через Nginx, например `curl -si http://localhost:8080/api/health/live`.
+2. Скопировать `X-Request-Id` из ответа.
+3. Найти тот же id в логах: `npm run docker:logs` или `docker compose logs api`.
+4. В Grafana → Maintenance → **API Technical Metrics** внизу панель с описанием цепочки.
+
+`requestId` не добавляется в метки Prometheus (слишком много уникальных значений).
+
 ### Метрики
 
 Конфиги: [`deploy/prometheus/`](../deploy/prometheus/), [`deploy/grafana/`](../deploy/grafana/).
@@ -159,7 +175,7 @@ Prometheus скрейпит `host.docker.internal:3000`.
 
 | Дашборд | Источник | Содержание |
 |---------|----------|------------|
-| API Technical Metrics | Prometheus | RPS, 4xx/5xx, latency, availability |
+| API Technical Metrics | Prometheus | RPS, 4xx/5xx, latency, availability, панель трассировки `requestId` |
 | Business Metrics | PostgreSQL | статусы, приоритеты, закрытие, просрочки |
 
 Алерты: `deploy/grafana/provisioning/alerting/rules.yml` (UI: Alerting → Alert rules). SMTP не настроен — смотреть статус **Firing**.
