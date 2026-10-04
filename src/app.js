@@ -21,6 +21,9 @@ import docsRoutes from "./routes/docsRoutes.js";
 
 const app = express();
 
+// Trust one reverse proxy hop (Nginx) so req.ip / rate-limit see the real client IP.
+app.set("trust proxy", 1);
+
 app.use(requestId);
 app.use(requestLogger);
 app.use(metricsMiddleware);
