@@ -1,0 +1,509 @@
+openapi: 3.0.3
+info:
+  title: Maintenance API
+  description: |
+    REST API for equipment and maintenance requests.
+    Protect business routes with Bearer JWT (login → accessToken).
+    Refresh token is sent as httpOnly cookie.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:3000
+    description: Local API (npm run dev)
+  - url: http://localhost:8080
+    description: Docker stack via Nginx
+
+tags:
+  - name: Health
+  - name: Auth
+  - name: Equipment
+  - name: Requests
+  - name: Reports
+  - name: Metrics
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            message:
+              type: string
+            code:
+              type: string
+            requestId:
+              type: string
+              nullable: true
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [viewer, technician, admin]
+        technicianId:
+          type: string
+          format: uuid
+          nullable: true
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    LoginResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            accessToken:
+              type: string
+            user:
+              $ref: "#/components/schemas/User"
+
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+
+    LiveHealth:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        uptime:
+          type: integer
+          description: Process uptime in seconds
+
+    ReadyHealth:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+
+paths:
+  /api/health/live:
+    get:
+      tags: [Health]
+      summary: Liveness probe
+      description: Process is running. No database check.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LiveHealth"
+
+  /api/health/ready:
+    get:
+      tags: [Health]
+      summary: Readiness probe
+      description: Returns 503 if PostgreSQL is unavailable.
+      responses:
+        "200":
+          description: Ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadyHealth"
+        "503":
+          description: Not ready (DB down)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadyHealth"
+
+  /api/auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/User"
+        "409":
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login
+      description: Returns accessToken in JSON and sets refresh httpOnly cookie.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          description: Invalid email or password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          description: Too many login attempts
+
+  /api/auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token
+      description: Uses refresh token from httpOnly cookie.
+      responses:
+        "200":
+          description: New access token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          description: Missing or invalid refresh cookie
+
+  /api/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout
+      description: Clears refresh cookie.
+      responses:
+        "200":
+          description: Logged out
+
+  /api/auth/me:
+    get:
+      tags: [Auth]
+      summary: Current user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+
+  /api/equipment:
+    get:
+      tags: [Equipment]
+      summary: List equipment
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: q
+          schema:
+            type: string
+          description: Search query
+        - in: query
+          name: siteId
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: List of equipment
+        "401":
+          description: Unauthorized
+    post:
+      tags: [Equipment]
+      summary: Create equipment
+      description: Admin only.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, serialNumber, siteId]
+              properties:
+                name:
+                  type: string
+                serialNumber:
+                  type: string
+                siteId:
+                  type: string
+                  format: uuid
+      responses:
+        "201":
+          description: Created
+        "403":
+          description: Forbidden
+
+  /api/equipment/{id}:
+    get:
+      tags: [Equipment]
+      summary: Get equipment by id
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: OK
+        "404":
+          description: Not found
+    patch:
+      tags: [Equipment]
+      summary: Update equipment
+      description: Admin only.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Updated
+        "403":
+          description: Forbidden
+    delete:
+      tags: [Equipment]
+      summary: Delete equipment
+      description: Admin only.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Deleted
+        "409":
+          description: Conflict (linked requests)
+
+  /api/requests:
+    get:
+      tags: [Requests]
+      summary: List maintenance requests
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+        - in: query
+          name: priority
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of requests
+    post:
+      tags: [Requests]
+      summary: Create request
+      description: Admin or technician.
+      security:
+        - bearerAuth: []
+      responses:
+        "201":
+          description: Created
+        "403":
+          description: Forbidden
+
+  /api/requests/{id}:
+    get:
+      tags: [Requests]
+      summary: Get request by id
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: OK
+        "404":
+          description: Not found
+    patch:
+      tags: [Requests]
+      summary: Update request
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Updated
+    delete:
+      tags: [Requests]
+      summary: Delete request
+      description: Admin only.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Deleted
+
+  /api/requests/{id}/status:
+    patch:
+      tags: [Requests]
+      summary: Change request status
+      description: |
+        Admin or assigned technician.
+        Viewer → 403. Technician without assignment → 403.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [new, in_progress, done, rejected, cancelled]
+      responses:
+        "200":
+          description: Status changed
+        "403":
+          description: Forbidden
+        "409":
+          description: Invalid transition or missing assignees
+
+  /api/requests/{id}/history:
+    get:
+      tags: [Requests]
+      summary: Status history
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: History list
+
+  /api/requests/{id}/assignees:
+    post:
+      tags: [Requests]
+      summary: Replace assignees
+      description: Admin only.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Assignees replaced
+        "403":
+          description: Forbidden
+
+  /api/reports/sites/{id}/summary:
+    get:
+      tags: [Reports]
+      summary: Site summary
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Summary
+        "404":
+          description: Site not found
+
+  /api/reports/technicians/workload:
+    get:
+      tags: [Reports]
+      summary: Technicians workload
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Workload list
+
+  /api/reports/equipment-load:
+    get:
+      tags: [Reports]
+      summary: Equipment load
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Load list
+
+  /metrics:
+    get:
+      tags: [Metrics]
+      summary: Prometheus metrics
+      description: |
+        Public on the API process. Behind Nginx in Docker this path returns 403;
+        Prometheus scrapes api:3000 on the internal network.
+      responses:
+        "200":
+          description: Prometheus text format
+          content:
+            text/plain:
+              schema:
+                type: string
