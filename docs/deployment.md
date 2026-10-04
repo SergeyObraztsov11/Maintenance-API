@@ -123,7 +123,14 @@ Prometheus скрейпит `host.docker.internal:3000`.
 
 Конфиг: [`deploy/nginx/default.conf`](../deploy/nginx/default.conf).
 
-Прокси на `api:3000`, заголовки `Host`, `X-Real-IP`, `X-Forwarded-*`, `X-Request-Id`, лимит тела 1m, gzip. `/metrics` снаружи — **403**; Prometheus ходит на `api:3000` внутри сети. В Express: `trust proxy = 1`.
+| location | Поведение |
+|----------|-----------|
+| `/metrics` | **403** (скрейп только внутри Docker-сети на `api:3000`) |
+| `/api/docs`, `/api/openapi.json` | proxy → `api:3000` (Swagger) |
+| `/api/` | proxy → `api:3000` (API) |
+| `/` | **404** JSON |
+
+Заголовки: `Host`, `X-Real-IP`, `X-Forwarded-*`, `X-Request-Id`. Лимит тела 1m, gzip, proxy timeouts. В Express: `trust proxy = 1`.
 
 ## Логи и метрики
 
