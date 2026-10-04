@@ -18,14 +18,20 @@ npm run dev
 
 | Сервис | URL | Назначение |
 |--------|-----|------------|
-| API | http://localhost:3000 | Node-приложение на хосте |
-| Метрики | http://localhost:3000/metrics | Текст в формате Prometheus |
-| Health live | http://localhost:3000/api/health/live | Процесс жив |
-| Health ready | http://localhost:3000/api/health/ready | БД доступна |
-| Prometheus | http://localhost:9090 | Status → Targets |
-| Grafana | http://localhost:3001 | Логин: `admin` / `admin` |
+| API (через Nginx) | http://localhost:8080 | Публичный вход в compose-стеке |
+| API на хосте (dev) | http://localhost:3000 | `npm run dev` без Nginx |
+| Health live / ready | http://localhost:8080/api/health/... | Через Nginx |
+| Метрики | только внутри Docker (`api:3000/metrics`) | Через Nginx `/metrics` → **403** |
+| Prometheus | http://127.0.0.1:9090 | Только localhost |
+| Grafana | http://127.0.0.1:3001 | Только localhost (`admin` / `admin`) |
 
 Источники данных и дашборды подключаются автоматически.
+
+### Доступ к служебному
+
+- **`/metrics`** снаружи через Nginx закрыт (`403`). Prometheus скрейпит `api:3000` по внутренней сети compose.
+- **Grafana** и **Prometheus** слушают только `127.0.0.1` — с других машин в сети недоступны.
+- Postgres проброшен как `127.0.0.1:${DB_PORT}` (локальная разработка).
 
 ## Дашборды
 
