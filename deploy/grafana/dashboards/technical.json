@@ -129,6 +129,271 @@
           "refId": "A"
         }
       ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "успешные" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "ошибки" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }
+            ]
+          }
+        ]
+      },
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 16 },
+      "id": 5,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "orientation": "horizontal",
+        "stacking": "normal",
+        "showValue": "always",
+        "xTickLabelRotation": 0,
+        "barRadius": 0,
+        "groupWidth": 0.7,
+        "barWidth": 0.9,
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "title": "Успешные и ошибочные запросы (по маршрутам)",
+      "type": "barchart",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum by (route, kind) (\n  label_replace(http_request_total{status_code=~\"2..\"}, \"kind\", \"успешные\", \"status_code\", \".+\")\n  or\n  label_replace(http_request_total{status_code=~\"[45]..\"}, \"kind\", \"ошибки\", \"status_code\", \".+\")\n)",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "__auto",
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "columnField": "kind",
+            "rowField": "route",
+            "valueField": "Value",
+            "emptyValue": "zero"
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              { "targetField": "успешные", "destinationType": "number" },
+              { "targetField": "ошибки", "destinationType": "number" }
+            ],
+            "fields": {}
+          }
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "401" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "403" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "dark-orange", "mode": "fixed" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "404" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "429" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "purple", "mode": "fixed" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "500" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "502" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "dark-red", "mode": "fixed" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "503" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "semi-dark-red", "mode": "fixed" } }
+            ]
+          }
+        ]
+      },
+      "gridPos": { "h": 12, "w": 14, "x": 0, "y": 28 },
+      "id": 6,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "orientation": "horizontal",
+        "stacking": "normal",
+        "showValue": "always",
+        "xTickLabelRotation": 0,
+        "barRadius": 0,
+        "groupWidth": 0.7,
+        "barWidth": 0.9,
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "title": "Ошибки по маршрутам (разбивка по кодам)",
+      "type": "barchart",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum by (route, status_code) (http_request_total{status_code=~\"[45]..\"})",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "__auto",
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "columnField": "status_code",
+            "rowField": "route",
+            "valueField": "Value",
+            "emptyValue": "zero"
+          }
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "custom": {
+            "align": "left",
+            "filterable": true,
+            "inspect": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "маршрут" },
+            "properties": [
+              { "id": "custom.width", "value": 220 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "код" },
+            "properties": [
+              { "id": "custom.width", "value": 70 },
+              { "id": "custom.align", "value": "center" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "количество" },
+            "properties": [
+              { "id": "custom.width", "value": 100 },
+              { "id": "custom.align", "value": "center" },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "green", "value": null },
+                    { "color": "orange", "value": 1 },
+                    { "color": "red", "value": 5 }
+                  ]
+                }
+              },
+              { "id": "color", "value": { "mode": "thresholds" } },
+              { "id": "custom.cellOptions", "value": { "type": "color-background" } }
+            ]
+          }
+        ]
+      },
+      "gridPos": { "h": 12, "w": 10, "x": 14, "y": 28 },
+      "id": 7,
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [{ "displayName": "количество", "desc": true }],
+        "footer": {
+          "show": false,
+          "reducer": ["sum"],
+          "countRows": false,
+          "fields": ""
+        }
+      },
+      "title": "Список ошибок (маршрут → код)",
+      "type": "table",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum by (route, status_code) (http_request_total{status_code=~\"[45]..\"})",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "__auto",
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true },
+            "indexByName": {
+              "route": 0,
+              "status_code": 1,
+              "Value": 2
+            },
+            "renameByName": {
+              "route": "маршрут",
+              "status_code": "код",
+              "Value": "количество"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [{ "field": "количество", "desc": true }]
+          }
+        }
+      ]
     }
   ],
   "refresh": "5s",
@@ -140,6 +405,6 @@
   "timezone": "browser",
   "title": "API Technical Metrics",
   "uid": "maintenance-technical",
-  "version": 2,
+  "version": 6,
   "weekStart": ""
 }
