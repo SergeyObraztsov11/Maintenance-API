@@ -394,6 +394,21 @@
           }
         }
       ]
+    },
+    {
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 40 },
+      "id": 8,
+      "options": {
+        "code": {
+          "language": "markdown",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "## Сквозная трассировка `requestId`\n\nИдентификатор запроса проходит по цепочке:\n\n1. **Nginx** задаёт `X-Request-Id` (`$request_id`) и передаёт его в API\n2. **API** принимает заголовок (или генерирует UUID), пишет `requestId` в JSON-лог и в тело ошибки\n3. **Клиент** получает тот же id в заголовке ответа `X-Request-Id`\n\n### Как связать запрос с логом\n\n```bash\ncurl -si http://localhost:8080/api/health/live\n# скопировать X-Request-Id из ответа\n\nnpm run docker:logs\n# или: docker compose logs api | findstr <requestId>\n```\n\nВ логе ищите JSON-поле `\"requestId\":\"...\"` — значение должно совпасть с заголовком.\n\n`requestId` **не** кладётся в метки Prometheus (высокая кардинальность). Корреляция: ответ HTTP ↔ логи API ↔ эта панель.",
+        "mode": "markdown"
+      },
+      "title": "Сквозная трассировка (requestId)",
+      "type": "text"
     }
   ],
   "refresh": "5s",
@@ -405,6 +420,6 @@
   "timezone": "browser",
   "title": "API Technical Metrics",
   "uid": "maintenance-technical",
-  "version": 6,
+  "version": 7,
   "weekStart": ""
 }
