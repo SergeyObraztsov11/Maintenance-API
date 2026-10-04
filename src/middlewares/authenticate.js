@@ -27,7 +27,7 @@ export async function authenticate(req, res, next) {
         if (!user) {
             throw new UnauthorizedError("User not found");
         }
-        
+
         req.user = {
             id: user.id,
             email: user.email,

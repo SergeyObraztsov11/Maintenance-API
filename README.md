@@ -14,6 +14,7 @@ Docker Compose: Nginx, Prometheus, Grafana.
 - [Структура проекта](#структура-проекта)
 - [API-документация](#api-документация)
 - [Тесты](#тесты)
+- [CI](#ci)
 - [Документация](#документация)
 - [Скрипты и команды](#скрипты-и-команды)
 - [Демо-логины](#демо-логины-после-seed)
@@ -162,6 +163,20 @@ npm run test:coverage     # то же + отчёт coverage/
 ```
 
 Подробнее: [`docs/testing.md`](docs/testing.md).
+
+## CI
+
+На каждый push в `main` и на каждый Pull Request GitHub Actions запускает отдельные checks:
+
+| Check | Команда |
+|-------|---------|
+| ESLint | `npm run lint:check` |
+| Prettier | `npm run format:check` |
+| Jest | `npm test` (Postgres service) |
+| Docker build | `docker build` |
+
+Workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml).  
+Статус — вкладка **Actions** / checks у PR (видно, какой именно шаг упал).
 
 ## Документация
 

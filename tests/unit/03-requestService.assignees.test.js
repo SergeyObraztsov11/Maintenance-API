@@ -13,9 +13,12 @@ jest.unstable_mockModule("../../src/repositories/requestRepository.js", () => ({
     requestRepository,
 }));
 
-jest.unstable_mockModule("../../src/repositories/equipmentRepository.js", () => ({
-    equipmentRepository: {},
-}));
+jest.unstable_mockModule(
+    "../../src/repositories/equipmentRepository.js",
+    () => ({
+        equipmentRepository: {},
+    }),
+);
 
 jest.unstable_mockModule("../../src/models/index.js", () => ({
     Technician,

@@ -70,5 +70,5 @@ export const weatherQuerySchema = z
         days: z.coerce.number().int().min(1).max(7).optional(),
     })
     .strict();
-    
+
 export const updateEquipmentBodySchema = createEquipmentBodySchema.partial();

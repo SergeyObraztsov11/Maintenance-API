@@ -6,13 +6,19 @@ const equipmentRepository = {
 
 const getWeatherByCoordinates = jest.fn();
 
-jest.unstable_mockModule("../../src/repositories/equipmentRepository.js", () => ({
-    equipmentRepository,
-}));
+jest.unstable_mockModule(
+    "../../src/repositories/equipmentRepository.js",
+    () => ({
+        equipmentRepository,
+    }),
+);
 
-jest.unstable_mockModule("../../src/weather/getWeatherByCoordinates.js", () => ({
-    getWeatherByCoordinates,
-}));
+jest.unstable_mockModule(
+    "../../src/weather/getWeatherByCoordinates.js",
+    () => ({
+        getWeatherByCoordinates,
+    }),
+);
 
 const { weatherService } = await import("../../src/services/weatherService.js");
 const { NotFoundError } = await import("../../src/errors/NotFoundError.js");

@@ -10,6 +10,8 @@ npm test                  # Jest
 npm run test:coverage     # Jest + coverage/
 ```
 
+В CI (GitHub Actions) отдельные jobs: ESLint, Prettier, Jest (Postgres service), Docker build. См. `.github/workflows/ci.yml`.
+
 Перед прогоном `globalSetup`: создаёт `maintenance_test` (если нет) и применяет миграции (`--env test`).  
 Между тестами: `TRUNCATE … CASCADE` (`tests/helpers/db.js`).  
 `maxWorkers: 1` — одна общая БД.

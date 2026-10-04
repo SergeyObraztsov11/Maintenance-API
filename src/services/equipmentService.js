@@ -86,7 +86,8 @@ export const equipmentService = {
         const requests = await requestRepository.findByEquipmentId(id);
         if (requests.length > 0) {
             const hasOpen = requests.some(
-                (item) => item.status === "new" || item.status === "in_progress",
+                (item) =>
+                    item.status === "new" || item.status === "in_progress",
             );
             throw new ConflictError(
                 hasOpen

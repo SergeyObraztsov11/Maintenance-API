@@ -18,7 +18,9 @@ describe("database migrations", () => {
         runSequelizeCli("db:migrate:undo:all", "--env", "test");
 
         const afterUndo = await listPublicTables();
-        expect(afterUndo).not.toEqual(expect.arrayContaining(["sites", "users"]));
+        expect(afterUndo).not.toEqual(
+            expect.arrayContaining(["sites", "users"]),
+        );
 
         runSequelizeCli("db:migrate", "--env", "test");
 

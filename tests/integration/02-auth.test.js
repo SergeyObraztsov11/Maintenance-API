@@ -43,7 +43,10 @@ describe("auth API", () => {
     });
 
     it("returns same 401 for unknown user and bad password", async () => {
-        await createUser({ email: "known@example.com", password: "password123" });
+        await createUser({
+            email: "known@example.com",
+            password: "password123",
+        });
 
         const unknown = await request(app)
             .post("/api/auth/login")
@@ -103,9 +106,8 @@ describe("auth API", () => {
 
         expect(logout.status).toBe(200);
 
-        const refreshWithoutCookie = await request(app).post(
-            "/api/auth/refresh",
-        );
+        const refreshWithoutCookie =
+            await request(app).post("/api/auth/refresh");
         expect(refreshWithoutCookie.status).toBe(401);
     });
 });
