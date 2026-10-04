@@ -1,4 +1,4 @@
-const LEVELS = { error: 0, warn: 1, info: 2, debug: 3 };
+const LEVELS = { silent: -1, error: 0, warn: 1, info: 2, debug: 3 };
 const currentLevel = LEVELS[process.env.LOG_LEVEL || "info"] ?? LEVELS.info;
 function write(level, message, meta = {}) {
     if ((LEVELS[level] ?? 99) > currentLevel) return;

@@ -96,6 +96,9 @@ npm run seed
 | `npm run format:fix` | форматирование Prettier |
 | `npm run check` | lint + format (только проверка) |
 | `npm run fix` | lint + format (исправление) |
+| `npm test` | unit + integration тесты (Jest) |
+| `npm run test:coverage` | тесты с отчётом coverage |
+| `npm run test:db:migrate` | миграции в `maintenance_test` |
 | `npm run docker:build` | сборка Docker-образа API |
 | `npm run docker:up` | поднять compose (сборка + фон) |
 | `npm run docker:down` | остановить compose |
@@ -387,6 +390,22 @@ Query (опционально): `from`, `to` (ISO, фильтр по `created_at
 
 Каждый запрос логируется (JSON): метод, путь, код ответа, длительность, `requestId`.  
 Идентификатор также возвращается в заголовке `X-Request-Id` и в теле ошибки.
+
+## Тесты (Jest)
+
+Нужна отдельная БД `maintenance_test` (чтобы не затирать dev-данные):
+
+```bash
+docker compose up -d db
+docker compose exec -T db psql -U maintenance -d postgres -c "CREATE DATABASE maintenance_test;"
+npm run test:db:migrate
+npm test
+npm run test:coverage
+```
+
+- Unit: переходы статусов, crew/assignees, роли (`allowedRoles`), weather (mock провайдера)
+- Integration: auth, 401/403/409, CRUD equipment
+- Тесты ходят в Postgres `TEST_DB_NAME` (по умолчанию `maintenance_test`) и чистят таблицы между кейсами
 
 ## OpenAPI / Swagger
 

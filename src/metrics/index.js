@@ -1,10 +1,14 @@
 import client from "prom-client";
+import { config } from "../config/index.js";
 
 // Склад всех метрик
 const register = new client.Registry();
 
 // Стандартные метрики процесса Node (память, CPU...)
-client.collectDefaultMetrics({ register });
+// Skip in tests: default metrics use intervals that keep Jest open.
+if (config.nodeEnv !== "test") {
+    client.collectDefaultMetrics({ register });
+}
 
 // Число запросов (по method / route / status)
 const httpRequestTotal = new client.Counter({

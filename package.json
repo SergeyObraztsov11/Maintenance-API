@@ -15,6 +15,7 @@
     "fix": "npm run lint:fix && npm run format:fix",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
+    "test:db:migrate": "sequelize-cli db:migrate --env test",
     "docker:build": "docker build -t maintenance-api .",
     "docker:up": "docker compose up --build -d",
     "docker:down": "docker compose down",
