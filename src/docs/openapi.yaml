@@ -6,28 +6,25 @@ info:
     Protect business routes with Bearer JWT (login → accessToken).
     Refresh token is sent as httpOnly cookie.
   version: 1.0.0
-
 servers:
-  - url: http://localhost:3000
-    description: Local API (npm run dev)
   - url: http://localhost:8080
     description: Docker stack via Nginx
-
+  - url: http://localhost:3000
+    description: Local API (npm run dev)
 tags:
   - name: Health
   - name: Auth
   - name: Equipment
   - name: Requests
+  - name: Sites
   - name: Reports
   - name: Metrics
-
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
-
   parameters:
     Id:
       name: id
@@ -36,7 +33,13 @@ components:
       schema:
         type: string
         format: uuid
-
+    TechnicianId:
+      name: technicianId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
   schemas:
     Error:
       type: object
@@ -48,10 +51,19 @@ components:
               type: string
             code:
               type: string
+            details:
+              type: array
+              items:
+                type: object
             requestId:
               type: string
               nullable: true
-
+      example:
+        error:
+          code: UNAUTHORIZED
+          message: Token is required
+          details: []
+          requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
     User:
       type: object
       properties:
@@ -63,65 +75,346 @@ components:
           format: email
         role:
           type: string
-          enum: [viewer, technician, admin]
+          enum:
+            - viewer
+            - technician
+            - admin
         technicianId:
           type: string
           format: uuid
           nullable: true
-
-    LoginRequest:
+      example:
+        id: 1b8c3739-7d72-40b7-9d93-0e1232b77807
+        email: admin@example.com
+        role: admin
+        technicianId: null
+    Equipment:
       type: object
-      required: [email, password]
-      properties:
-        email:
-          type: string
-          format: email
-        password:
-          type: string
-
-    LoginResponse:
+      example:
+        id: 22222222-2222-2222-2222-222222222222
+        name: Turbine A1
+        serialNumber: SN-A1-001
+        siteId: 11111111-1111-1111-1111-111111111111
+        location:
+          lat: 55.75
+          lon: 37.61
+    Request:
       type: object
-      properties:
-        data:
-          type: object
-          properties:
-            accessToken:
-              type: string
-            user:
-              $ref: "#/components/schemas/User"
-
-    RegisterRequest:
-      type: object
-      required: [email, password]
-      properties:
-        email:
-          type: string
-          format: email
-        password:
-          type: string
-          minLength: 8
-
-    LiveHealth:
-      type: object
-      properties:
-        status:
-          type: string
-          example: ok
-        uptime:
-          type: integer
-          description: Process uptime in seconds
-
-    ReadyHealth:
-      type: object
-      properties:
-        status:
-          type: string
-          example: ok
-
+      example:
+        id: 33333333-3333-3333-3333-333333333333
+        title: Scheduled inspection
+        status: new
+        priority: medium
+        equipmentId: 22222222-2222-2222-2222-222222222222
+        plannedAt: 2026-10-10T10:00:00.000Z
+        assignees:
+          - technicianId: 44444444-4444-4444-4444-444444444444
+            role: lead
+  responses:
+    BadRequestJson:
+      description: Invalid JSON body
+      content:
+        application/json:
+          example:
+            error:
+              code: BAD_REQUEST
+              message: Invalid JSON body
+              details: []
+              requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    PayloadTooLarge:
+      description: Request body too large (>100kb)
+      content:
+        application/json:
+          example:
+            error:
+              code: PAYLOAD_TOO_LARGE
+              message: Request body too large
+              details: []
+              requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    ValidationError:
+      description: Request validation failed (Zod)
+      content:
+        application/json:
+          example:
+            error:
+              code: VALIDATION_ERROR
+              message: Invalid request data
+              details:
+                - field: email
+                  message: Invalid email
+              requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    UnauthorizedToken:
+      description: Missing or invalid access token
+      content:
+        application/json:
+          examples:
+            tokenRequired:
+              summary: Token is required
+              value:
+                error:
+                  code: UNAUTHORIZED
+                  message: Token is required
+                  details: []
+                  requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+            invalidToken:
+              summary: Invalid token
+              value:
+                error:
+                  code: UNAUTHORIZED
+                  message: Invalid token
+                  details: []
+                  requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+            userNotFound:
+              summary: User not found
+              value:
+                error:
+                  code: UNAUTHORIZED
+                  message: User not found
+                  details: []
+                  requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    UnauthorizedCredentials:
+      description: Invalid email or password
+      content:
+        application/json:
+          example:
+            error:
+              code: UNAUTHORIZED
+              message: Invalid email or password
+              details: []
+              requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    UnauthorizedRefresh:
+      description: Missing or invalid refresh cookie
+      content:
+        application/json:
+          examples:
+            missing:
+              summary: Refresh token is required
+              value:
+                error:
+                  code: UNAUTHORIZED
+                  message: Refresh token is required
+                  details: []
+                  requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+            invalid:
+              summary: Invalid or expired refresh token
+              value:
+                error:
+                  code: UNAUTHORIZED
+                  message: Invalid or expired refresh token
+                  details: []
+                  requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    ForbiddenRole:
+      description: Role is not allowed for this action
+      content:
+        application/json:
+          example:
+            error:
+              code: FORBIDDEN
+              message: Insufficient permissions
+              details: []
+              requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    ForbiddenStatusAccess:
+      description: Technician cannot change status of this request
+      content:
+        application/json:
+          example:
+            error:
+              code: FORBIDDEN
+              message: No access to change the status of this request.
+              details: []
+              requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    NotFoundEquipment:
+      description: Equipment not found
+      content:
+        application/json:
+          example:
+            error:
+              code: NOT_FOUND
+              message: Equipment 22222222-2222-2222-2222-222222222222 not found
+              details: []
+              requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    NotFoundRequest:
+      description: Request not found
+      content:
+        application/json:
+          example:
+            error:
+              code: NOT_FOUND
+              message: Request 33333333-3333-3333-3333-333333333333 not found
+              details: []
+              requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    NotFoundSite:
+      description: Site not found
+      content:
+        application/json:
+          example:
+            error:
+              code: NOT_FOUND
+              message: Site 11111111-1111-1111-1111-111111111111 not found
+              details: []
+              requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    NotFoundTechnician:
+      description: Technician not found
+      content:
+        application/json:
+          example:
+            error:
+              code: NOT_FOUND
+              message: Technician 44444444-4444-4444-4444-444444444444 not found
+              details: []
+              requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    ConflictEmail:
+      description: Email already registered
+      content:
+        application/json:
+          example:
+            error:
+              code: CONFLICT
+              message: Email already registered
+              details: []
+              requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    ConflictSerial:
+      description: Serial number already exists
+      content:
+        application/json:
+          example:
+            error:
+              code: CONFLICT
+              message: Serial number SN-A1-001 already exists
+              details: []
+              requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    ConflictDeleteEquipment:
+      description: Cannot delete equipment with related requests
+      content:
+        application/json:
+          examples:
+            openRequests:
+              summary: Open maintenance requests exist
+              value:
+                error:
+                  code: CONFLICT
+                  message: "Cannot delete equipment 22222222-2222-2222-2222-222222222222: open maintenance requests exist"
+                  details: []
+                  requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+            relatedRequests:
+              summary: Related maintenance requests exist
+              value:
+                error:
+                  code: CONFLICT
+                  message: "Cannot delete equipment 22222222-2222-2222-2222-222222222222: related maintenance requests exist"
+                  details: []
+                  requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    ConflictStatus:
+      description: Invalid status transition or missing assignees
+      content:
+        application/json:
+          examples:
+            badTransition:
+              summary: Invalid transition
+              value:
+                error:
+                  code: CONFLICT
+                  message: Cannot change status from done to new
+                  details: []
+                  requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+            noAssignees:
+              summary: in_progress without assignees
+              value:
+                error:
+                  code: CONFLICT
+                  message: Cannot set in_progress without assignees
+                  details: []
+                  requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    ValidationAssignees:
+      description: Assignee crew validation failed
+      content:
+        application/json:
+          examples:
+            invalidRequest:
+              summary: Schema validation
+              value:
+                error:
+                  code: VALIDATION_ERROR
+                  message: Invalid request data
+                  details:
+                    - field: assignees
+                      message: Required
+                  requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+            oneLead:
+              summary: Exactly one lead required
+              value:
+                error:
+                  code: VALIDATION_ERROR
+                  message: Crew must contain exactly one lead
+                  details:
+                    - field: assignees
+                      message: Exactly one lead is required
+                  requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+            duplicate:
+              summary: Duplicate technician
+              value:
+                error:
+                  code: VALIDATION_ERROR
+                  message: Duplicate technician in crew
+                  details:
+                    - field: assignees
+                      message: Duplicate technicianId in assignees list
+                  requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    TooManyRequestsApi:
+      description: API rate limit exceeded
+      content:
+        application/json:
+          example:
+            error:
+              code: RATE_LIMIT_EXCEEDED
+              message: Too many requests
+              details: []
+              requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    TooManyRequestsLogin:
+      description: Login rate limit exceeded
+      content:
+        application/json:
+          example:
+            error:
+              code: RATE_LIMIT_EXCEEDED
+              message: Too many login attempts
+              details: []
+              requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    InternalError:
+      description: Unexpected server error
+      content:
+        application/json:
+          example:
+            error:
+              code: INTERNAL_ERROR
+              message: Internal server error
+              details: []
+              requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    NotFoundAssignee:
+      description: Assignee not found on request
+      content:
+        application/json:
+          example:
+            error:
+              code: NOT_FOUND
+              message: Assignee 44444444-4444-4444-4444-444444444444 not found on request 33333333-3333-3333-3333-333333333333
+              details: []
+              requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    WeatherProviderError:
+      description: Upstream weather provider failed
+      content:
+        application/json:
+          example:
+            error:
+              code: WEATHER_PROVIDER_ERROR
+              message: Weather forecast timeout
+              details: []
+              requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
 paths:
   /api/health/live:
     get:
-      tags: [Health]
+      tags:
+        - Health
       summary: Liveness probe
       description: Process is running. No database check.
       responses:
@@ -129,12 +422,17 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/LiveHealth"
-
+              example:
+                status: ok
+                uptime: 125
+        "429":
+          $ref: "#/components/responses/TooManyRequestsApi"
+        "500":
+          $ref: "#/components/responses/InternalError"
   /api/health/ready:
     get:
-      tags: [Health]
+      tags:
+        - Health
       summary: Readiness probe
       description: Returns 503 if PostgreSQL is unavailable.
       responses:
@@ -142,45 +440,69 @@ paths:
           description: Ready
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/ReadyHealth"
+              example:
+                status: ok
+        "429":
+          $ref: "#/components/responses/TooManyRequestsApi"
+        "500":
+          $ref: "#/components/responses/InternalError"
         "503":
           description: Not ready (DB down)
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/ReadyHealth"
-
+              example:
+                status: error
   /api/auth/register:
     post:
-      tags: [Auth]
+      tags:
+        - Auth
       summary: Register a new user
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/RegisterRequest"
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+            example:
+              email: new.user@example.com
+              password: password123
       responses:
         "201":
           description: Created
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    $ref: "#/components/schemas/User"
+              example:
+                data:
+                  id: 55555555-5555-5555-5555-555555555555
+                  email: new.user@example.com
+                  role: viewer
+                  technicianId: null
+        "400":
+          $ref: "#/components/responses/BadRequestJson"
         "409":
-          description: Email already exists
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-
+          $ref: "#/components/responses/ConflictEmail"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequestsApi"
+        "500":
+          $ref: "#/components/responses/InternalError"
   /api/auth/login:
     post:
-      tags: [Auth]
+      tags:
+        - Auth
       summary: Login
       description: Returns accessToken in JSON and sets refresh httpOnly cookie.
       requestBody:
@@ -188,26 +510,66 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/LoginRequest"
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+            example:
+              email: admin@example.com
+              password: password123
       responses:
         "200":
           description: OK
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/LoginResponse"
+              example:
+                data:
+                  accessToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example
+                  user:
+                    id: 1b8c3739-7d72-40b7-9d93-0e1232b77807
+                    email: admin@example.com
+                    role: admin
+                    technicianId: null
+        "400":
+          $ref: "#/components/responses/BadRequestJson"
         "401":
-          description: Invalid email or password
+          $ref: "#/components/responses/UnauthorizedCredentials"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          description: Rate limit exceeded (login or API)
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "429":
-          description: Too many login attempts
-
+              examples:
+                login:
+                  summary: Too many login attempts
+                  value:
+                    error:
+                      code: RATE_LIMIT_EXCEEDED
+                      message: Too many login attempts
+                      details: []
+                      requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+                api:
+                  summary: Too many API requests
+                  value:
+                    error:
+                      code: RATE_LIMIT_EXCEEDED
+                      message: Too many requests
+                      details: []
+                      requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+        "500":
+          $ref: "#/components/responses/InternalError"
   /api/auth/refresh:
     post:
-      tags: [Auth]
+      tags:
+        - Auth
       summary: Refresh access token
       description: Uses refresh token from httpOnly cookie.
       responses:
@@ -215,23 +577,40 @@ paths:
           description: New access token
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/LoginResponse"
+              example:
+                data:
+                  accessToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.new-example
+                  user:
+                    id: 1b8c3739-7d72-40b7-9d93-0e1232b77807
+                    email: admin@example.com
+                    role: admin
+                    technicianId: null
         "401":
-          description: Missing or invalid refresh cookie
-
+          $ref: "#/components/responses/UnauthorizedRefresh"
+        "429":
+          $ref: "#/components/responses/TooManyRequestsApi"
+        "500":
+          $ref: "#/components/responses/InternalError"
   /api/auth/logout:
     post:
-      tags: [Auth]
+      tags:
+        - Auth
       summary: Logout
-      description: Clears refresh cookie.
+      description: Clears refresh cookie. Body is empty.
       responses:
         "200":
-          description: Logged out
-
+          description: Logged out (empty body)
+          content:
+            text/plain:
+              example: ""
+        "429":
+          $ref: "#/components/responses/TooManyRequestsApi"
+        "500":
+          $ref: "#/components/responses/InternalError"
   /api/auth/me:
     get:
-      tags: [Auth]
+      tags:
+        - Auth
       summary: Current user
       security:
         - bearerAuth: []
@@ -240,17 +619,22 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    $ref: "#/components/schemas/User"
+              example:
+                data:
+                  id: 1b8c3739-7d72-40b7-9d93-0e1232b77807
+                  email: admin@example.com
+                  role: admin
+                  technicianId: null
         "401":
-          description: Unauthorized
-
+          $ref: "#/components/responses/UnauthorizedToken"
+        "429":
+          $ref: "#/components/responses/TooManyRequestsApi"
+        "500":
+          $ref: "#/components/responses/InternalError"
   /api/equipment:
     get:
-      tags: [Equipment]
+      tags:
+        - Equipment
       summary: List equipment
       security:
         - bearerAuth: []
@@ -259,19 +643,52 @@ paths:
           name: q
           schema:
             type: string
-          description: Search query
         - in: query
           name: siteId
           schema:
             type: string
             format: uuid
+        - in: query
+          name: page
+          schema:
+            type: integer
+            example: 1
       responses:
         "200":
-          description: List of equipment
+          description: Paginated list
+          content:
+            application/json:
+              example:
+                data:
+                  - id: 22222222-2222-2222-2222-222222222222
+                    name: Turbine A1
+                    serialNumber: SN-A1-001
+                    siteId: 11111111-1111-1111-1111-111111111111
+                    location:
+                      lat: 55.75
+                      lon: 37.61
+                  - id: 22222222-2222-2222-2222-222222222223
+                    name: Turbine A2
+                    serialNumber: SN-A2-002
+                    siteId: 11111111-1111-1111-1111-111111111111
+                    location:
+                      lat: 55.76
+                      lon: 37.62
+                meta:
+                  total: 2
+                  page: 1
+                  limit: 20
         "401":
-          description: Unauthorized
+          $ref: "#/components/responses/UnauthorizedToken"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequestsApi"
+        "500":
+          $ref: "#/components/responses/InternalError"
     post:
-      tags: [Equipment]
+      tags:
+        - Equipment
       summary: Create equipment
       description: Admin only.
       security:
@@ -280,26 +697,44 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [name, serialNumber, siteId]
-              properties:
-                name:
-                  type: string
-                serialNumber:
-                  type: string
-                siteId:
-                  type: string
-                  format: uuid
+            example:
+              name: Pump B1
+              serialNumber: SN-B1-010
+              siteId: 11111111-1111-1111-1111-111111111111
       responses:
         "201":
           description: Created
+          content:
+            application/json:
+              example:
+                data:
+                  id: 22222222-2222-2222-2222-222222222299
+                  name: Pump B1
+                  serialNumber: SN-B1-010
+                  siteId: 11111111-1111-1111-1111-111111111111
+                  location:
+                    lat: 55.75
+                    lon: 37.61
+        "400":
+          $ref: "#/components/responses/BadRequestJson"
+        "401":
+          $ref: "#/components/responses/UnauthorizedToken"
         "403":
-          description: Forbidden
-
+          $ref: "#/components/responses/ForbiddenRole"
+        "409":
+          $ref: "#/components/responses/ConflictSerial"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequestsApi"
+        "500":
+          $ref: "#/components/responses/InternalError"
   /api/equipment/{id}:
     get:
-      tags: [Equipment]
+      tags:
+        - Equipment
       summary: Get equipment by id
       security:
         - bearerAuth: []
@@ -308,23 +743,76 @@ paths:
       responses:
         "200":
           description: OK
+          content:
+            application/json:
+              example:
+                data:
+                  id: 22222222-2222-2222-2222-222222222222
+                  name: Turbine A1
+                  serialNumber: SN-A1-001
+                  siteId: 11111111-1111-1111-1111-111111111111
+                  location:
+                    lat: 55.75
+                    lon: 37.61
+        "401":
+          $ref: "#/components/responses/UnauthorizedToken"
         "404":
-          description: Not found
+          $ref: "#/components/responses/NotFoundEquipment"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequestsApi"
+        "500":
+          $ref: "#/components/responses/InternalError"
     patch:
-      tags: [Equipment]
+      tags:
+        - Equipment
       summary: Update equipment
       description: Admin only.
       security:
         - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/Id"
+      requestBody:
+        content:
+          application/json:
+            example:
+              name: Turbine A1 (updated)
       responses:
         "200":
           description: Updated
+          content:
+            application/json:
+              example:
+                data:
+                  id: 22222222-2222-2222-2222-222222222222
+                  name: Turbine A1 (updated)
+                  serialNumber: SN-A1-001
+                  siteId: 11111111-1111-1111-1111-111111111111
+                  location:
+                    lat: 55.75
+                    lon: 37.61
+        "400":
+          $ref: "#/components/responses/BadRequestJson"
+        "401":
+          $ref: "#/components/responses/UnauthorizedToken"
         "403":
-          description: Forbidden
+          $ref: "#/components/responses/ForbiddenRole"
+        "404":
+          $ref: "#/components/responses/NotFoundEquipment"
+        "409":
+          $ref: "#/components/responses/ConflictSerial"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequestsApi"
+        "500":
+          $ref: "#/components/responses/InternalError"
     delete:
-      tags: [Equipment]
+      tags:
+        - Equipment
       summary: Delete equipment
       description: Admin only.
       security:
@@ -333,13 +821,124 @@ paths:
         - $ref: "#/components/parameters/Id"
       responses:
         "204":
-          description: Deleted
+          description: Deleted (empty body)
+        "401":
+          $ref: "#/components/responses/UnauthorizedToken"
+        "403":
+          $ref: "#/components/responses/ForbiddenRole"
+        "404":
+          $ref: "#/components/responses/NotFoundEquipment"
         "409":
-          description: Conflict (linked requests)
-
+          $ref: "#/components/responses/ConflictDeleteEquipment"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequestsApi"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/equipment/{id}/requests:
+    get:
+      tags:
+        - Equipment
+        - Requests
+      summary: List requests for equipment
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - in: query
+          name: status
+          schema:
+            type: string
+            example: new
+        - in: query
+          name: page
+          schema:
+            type: integer
+            example: 1
+      responses:
+        "200":
+          description: Paginated requests for this equipment
+          content:
+            application/json:
+              example:
+                data:
+                  - id: 33333333-3333-3333-3333-333333333333
+                    title: Scheduled inspection
+                    status: new
+                    priority: medium
+                    equipmentId: 22222222-2222-2222-2222-222222222222
+                    plannedAt: 2026-10-10T10:00:00.000Z
+                meta:
+                  total: 1
+                  page: 1
+                  limit: 20
+        "401": &a1
+          $ref: "#/components/responses/UnauthorizedToken"
+        "404":
+          $ref: "#/components/responses/NotFoundEquipment"
+        "422": &a2
+          $ref: "#/components/responses/ValidationError"
+        "429": &a3
+          $ref: "#/components/responses/TooManyRequestsApi"
+        "500": &a4
+          $ref: "#/components/responses/InternalError"
+  /api/equipment/{id}/weather:
+    get:
+      tags:
+        - Equipment
+      summary: Weather forecast for equipment location
+      description: Fetches forecast for equipment coordinates and marks days suitable for outdoor work.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - in: query
+          name: days
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 7
+            example: 3
+      responses:
+        "200":
+          description: Forecast with outdoor-work suitability
+          content:
+            application/json:
+              example:
+                data:
+                  equipmentId: 22222222-2222-2222-2222-222222222222
+                  location:
+                    lat: 55.75
+                    lon: 37.61
+                  rules:
+                    precipitationMaxMm: 0.1
+                    windMaxMs: 12
+                  forecast:
+                    - date: 2026-10-05
+                      maxTemperature: 14.2
+                      minTemperature: 7.1
+                      precipitation: 0
+                      windSpeedMax: 5.4
+                      suitableForOutdoorWork: true
+                    - date: 2026-10-06
+                      maxTemperature: 12
+                      minTemperature: 6
+                      precipitation: 2.4
+                      windSpeedMax: 14
+                      suitableForOutdoorWork: false
+        "401": *a1
+        "404":
+          $ref: "#/components/responses/NotFoundEquipment"
+        "422": *a2
+        "429": *a3
+        "500": *a4
+        "502":
+          $ref: "#/components/responses/WeatherProviderError"
   /api/requests:
     get:
-      tags: [Requests]
+      tags:
+        - Requests
       summary: List maintenance requests
       security:
         - bearerAuth: []
@@ -348,28 +947,92 @@ paths:
           name: status
           schema:
             type: string
+            example: new
         - in: query
           name: priority
           schema:
             type: string
+            example: high
       responses:
         "200":
-          description: List of requests
+          description: Paginated list
+          content:
+            application/json:
+              example:
+                data:
+                  - id: 33333333-3333-3333-3333-333333333333
+                    title: Scheduled inspection
+                    status: new
+                    priority: medium
+                    equipmentId: 22222222-2222-2222-2222-222222222222
+                    plannedAt: 2026-10-10T10:00:00.000Z
+                  - id: 33333333-3333-3333-3333-333333333334
+                    title: Urgent repair
+                    status: in_progress
+                    priority: high
+                    equipmentId: 22222222-2222-2222-2222-222222222223
+                    plannedAt: 2026-10-05T08:00:00.000Z
+                meta:
+                  total: 2
+                  page: 1
+                  limit: 20
+        "401":
+          $ref: "#/components/responses/UnauthorizedToken"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequestsApi"
+        "500":
+          $ref: "#/components/responses/InternalError"
     post:
-      tags: [Requests]
+      tags:
+        - Requests
       summary: Create request
       description: Admin or technician.
       security:
         - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            example:
+              title: Filter replacement
+              description: Replace air filter
+              priority: medium
+              equipmentId: 22222222-2222-2222-2222-222222222222
+              plannedAt: 2026-10-12T09:00:00.000Z
       responses:
         "201":
           description: Created
+          content:
+            application/json:
+              example:
+                data:
+                  id: 33333333-3333-3333-3333-333333333399
+                  title: Filter replacement
+                  status: new
+                  priority: medium
+                  equipmentId: 22222222-2222-2222-2222-222222222222
+                  plannedAt: 2026-10-12T09:00:00.000Z
+        "400":
+          $ref: "#/components/responses/BadRequestJson"
+        "401":
+          $ref: "#/components/responses/UnauthorizedToken"
         "403":
-          description: Forbidden
-
+          $ref: "#/components/responses/ForbiddenRole"
+        "404":
+          $ref: "#/components/responses/NotFoundEquipment"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequestsApi"
+        "500":
+          $ref: "#/components/responses/InternalError"
   /api/requests/{id}:
     get:
-      tags: [Requests]
+      tags:
+        - Requests
       summary: Get request by id
       security:
         - bearerAuth: []
@@ -378,20 +1041,75 @@ paths:
       responses:
         "200":
           description: OK
+          content:
+            application/json:
+              example:
+                data:
+                  id: 33333333-3333-3333-3333-333333333333
+                  title: Scheduled inspection
+                  status: new
+                  priority: medium
+                  equipmentId: 22222222-2222-2222-2222-222222222222
+                  plannedAt: 2026-10-10T10:00:00.000Z
+                  assignees:
+                    - technicianId: 44444444-4444-4444-4444-444444444444
+                      role: lead
+        "401":
+          $ref: "#/components/responses/UnauthorizedToken"
         "404":
-          description: Not found
+          $ref: "#/components/responses/NotFoundRequest"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequestsApi"
+        "500":
+          $ref: "#/components/responses/InternalError"
     patch:
-      tags: [Requests]
+      tags:
+        - Requests
       summary: Update request
       security:
         - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/Id"
+      requestBody:
+        content:
+          application/json:
+            example:
+              title: Scheduled inspection (updated)
+              priority: high
       responses:
         "200":
           description: Updated
+          content:
+            application/json:
+              example:
+                data:
+                  id: 33333333-3333-3333-3333-333333333333
+                  title: Scheduled inspection (updated)
+                  status: new
+                  priority: high
+                  equipmentId: 22222222-2222-2222-2222-222222222222
+                  plannedAt: 2026-10-10T10:00:00.000Z
+        "400":
+          $ref: "#/components/responses/BadRequestJson"
+        "401":
+          $ref: "#/components/responses/UnauthorizedToken"
+        "403":
+          $ref: "#/components/responses/ForbiddenRole"
+        "404":
+          $ref: "#/components/responses/NotFoundRequest"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequestsApi"
+        "500":
+          $ref: "#/components/responses/InternalError"
     delete:
-      tags: [Requests]
+      tags:
+        - Requests
       summary: Delete request
       description: Admin only.
       security:
@@ -400,11 +1118,23 @@ paths:
         - $ref: "#/components/parameters/Id"
       responses:
         "204":
-          description: Deleted
-
+          description: Deleted (empty body)
+        "401":
+          $ref: "#/components/responses/UnauthorizedToken"
+        "403":
+          $ref: "#/components/responses/ForbiddenRole"
+        "404":
+          $ref: "#/components/responses/NotFoundRequest"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequestsApi"
+        "500":
+          $ref: "#/components/responses/InternalError"
   /api/requests/{id}/status:
     patch:
-      tags: [Requests]
+      tags:
+        - Requests
       summary: Change request status
       description: |
         Admin or assigned technician.
@@ -417,24 +1147,62 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [status]
-              properties:
-                status:
-                  type: string
-                  enum: [new, in_progress, done, rejected, cancelled]
+            example:
+              status: in_progress
       responses:
         "200":
           description: Status changed
+          content:
+            application/json:
+              example:
+                data:
+                  id: 33333333-3333-3333-3333-333333333333
+                  title: Scheduled inspection
+                  status: in_progress
+                  priority: medium
+                  equipmentId: 22222222-2222-2222-2222-222222222222
+                  plannedAt: 2026-10-10T10:00:00.000Z
+        "400":
+          $ref: "#/components/responses/BadRequestJson"
+        "401":
+          $ref: "#/components/responses/UnauthorizedToken"
         "403":
-          description: Forbidden
+          description: Forbidden (role or not assigned)
+          content:
+            application/json:
+              examples:
+                role:
+                  summary: Insufficient permissions
+                  value:
+                    error:
+                      code: FORBIDDEN
+                      message: Insufficient permissions
+                      details: []
+                      requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+                notAssignee:
+                  summary: Technician not assigned
+                  value:
+                    error:
+                      code: FORBIDDEN
+                      message: No access to change the status of this request.
+                      details: []
+                      requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+        "404":
+          $ref: "#/components/responses/NotFoundRequest"
         "409":
-          description: Invalid transition or missing assignees
-
+          $ref: "#/components/responses/ConflictStatus"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequestsApi"
+        "500":
+          $ref: "#/components/responses/InternalError"
   /api/requests/{id}/history:
     get:
-      tags: [Requests]
+      tags:
+        - Requests
       summary: Status history
       security:
         - bearerAuth: []
@@ -443,25 +1211,176 @@ paths:
       responses:
         "200":
           description: History list
-
+          content:
+            application/json:
+              example:
+                data:
+                  - id: 66666666-6666-6666-6666-666666666666
+                    requestId: 33333333-3333-3333-3333-333333333333
+                    fromStatus: null
+                    toStatus: new
+                    createdAt: 2026-10-01T12:00:00.000Z
+                  - id: 66666666-6666-6666-6666-666666666667
+                    requestId: 33333333-3333-3333-3333-333333333333
+                    fromStatus: new
+                    toStatus: in_progress
+                    createdAt: 2026-10-02T09:15:00.000Z
+        "401":
+          $ref: "#/components/responses/UnauthorizedToken"
+        "404":
+          $ref: "#/components/responses/NotFoundRequest"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequestsApi"
+        "500":
+          $ref: "#/components/responses/InternalError"
   /api/requests/{id}/assignees:
     post:
-      tags: [Requests]
+      tags:
+        - Requests
       summary: Replace assignees
+      description: Admin only. Exactly one lead required.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        content:
+          application/json:
+            example:
+              assignees:
+                - technicianId: 44444444-4444-4444-4444-444444444444
+                  role: lead
+                - technicianId: 44444444-4444-4444-4444-444444444445
+                  role: member
+      responses:
+        "200":
+          description: Assignees replaced
+          content:
+            application/json:
+              example:
+                data:
+                  - technicianId: 44444444-4444-4444-4444-444444444444
+                    role: lead
+                  - technicianId: 44444444-4444-4444-4444-444444444445
+                    role: member
+        "400":
+          $ref: "#/components/responses/BadRequestJson"
+        "401":
+          $ref: "#/components/responses/UnauthorizedToken"
+        "403":
+          $ref: "#/components/responses/ForbiddenRole"
+        "404":
+          description: Request or technician not found
+          content:
+            application/json:
+              examples:
+                request:
+                  summary: Request not found
+                  value:
+                    error:
+                      code: NOT_FOUND
+                      message: Request 33333333-3333-3333-3333-333333333333 not found
+                      details: []
+                      requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+                technician:
+                  summary: Technician not found
+                  value:
+                    error:
+                      code: NOT_FOUND
+                      message: Technician 44444444-4444-4444-4444-444444444444 not found
+                      details: []
+                      requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "422":
+          $ref: "#/components/responses/ValidationAssignees"
+        "429":
+          $ref: "#/components/responses/TooManyRequestsApi"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/requests/{id}/assignees/{technicianId}:
+    delete:
+      tags:
+        - Requests
+      summary: Remove assignee from request
       description: Admin only.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/TechnicianId"
+      responses:
+        "204":
+          description: Assignee removed (empty body)
+        "401":
+          $ref: "#/components/responses/UnauthorizedToken"
+        "403":
+          $ref: "#/components/responses/ForbiddenRole"
+        "404":
+          description: Request or assignee not found
+          content:
+            application/json:
+              examples:
+                request:
+                  summary: Request not found
+                  value:
+                    error:
+                      code: NOT_FOUND
+                      message: Request 33333333-3333-3333-3333-333333333333 not found
+                      details: []
+                      requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+                assignee:
+                  summary: Assignee not found on request
+                  value:
+                    error:
+                      code: NOT_FOUND
+                      message: Assignee 44444444-4444-4444-4444-444444444444 not found on request 33333333-3333-3333-3333-333333333333
+                      details: []
+                      requestId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequestsApi"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/sites/{id}/summary:
+    get:
+      tags:
+        - Sites
+        - Reports
+      summary: Site summary
+      description: Alias of GET /api/reports/sites/{id}/summary.
       security:
         - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/Id"
       responses:
         "200":
-          description: Assignees replaced
-        "403":
-          description: Forbidden
-
+          description: Summary
+          content:
+            application/json:
+              example:
+                data:
+                  siteId: 11111111-1111-1111-1111-111111111111
+                  siteName: Plant North
+                  equipmentCount: 6
+                  requestsByStatus:
+                    new: 3
+                    in_progress: 2
+                    done: 10
+                    rejected: 1
+        "401": *a1
+        "404":
+          $ref: "#/components/responses/NotFoundSite"
+        "422": *a2
+        "429": *a3
+        "500": *a4
   /api/reports/sites/{id}/summary:
     get:
-      tags: [Reports]
+      tags:
+        - Reports
       summary: Site summary
       security:
         - bearerAuth: []
@@ -470,32 +1389,88 @@ paths:
       responses:
         "200":
           description: Summary
+          content:
+            application/json:
+              example:
+                data:
+                  siteId: 11111111-1111-1111-1111-111111111111
+                  siteName: Plant North
+                  equipmentCount: 6
+                  requestsByStatus:
+                    new: 3
+                    in_progress: 2
+                    done: 10
+                    rejected: 1
+        "401":
+          $ref: "#/components/responses/UnauthorizedToken"
         "404":
-          description: Site not found
-
+          $ref: "#/components/responses/NotFoundSite"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequestsApi"
+        "500":
+          $ref: "#/components/responses/InternalError"
   /api/reports/technicians/workload:
     get:
-      tags: [Reports]
+      tags:
+        - Reports
       summary: Technicians workload
       security:
         - bearerAuth: []
       responses:
         "200":
           description: Workload list
-
+          content:
+            application/json:
+              example:
+                data:
+                  - technicianId: 44444444-4444-4444-4444-444444444444
+                    name: Ivan Petrov
+                    assignments: 5
+                    totalHours: 18
+                  - technicianId: 44444444-4444-4444-4444-444444444445
+                    name: Anna Smirnova
+                    assignments: 3
+                    totalHours: 12
+        "401":
+          $ref: "#/components/responses/UnauthorizedToken"
+        "429":
+          $ref: "#/components/responses/TooManyRequestsApi"
+        "500":
+          $ref: "#/components/responses/InternalError"
   /api/reports/equipment-load:
     get:
-      tags: [Reports]
+      tags:
+        - Reports
       summary: Equipment load
       security:
         - bearerAuth: []
       responses:
         "200":
           description: Load list
-
+          content:
+            application/json:
+              example:
+                data:
+                  - equipmentId: 22222222-2222-2222-2222-222222222222
+                    name: Turbine A1
+                    requestsCount: 4
+                  - equipmentId: 22222222-2222-2222-2222-222222222223
+                    name: Turbine A2
+                    requestsCount: 3
+        "401":
+          $ref: "#/components/responses/UnauthorizedToken"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequestsApi"
+        "500":
+          $ref: "#/components/responses/InternalError"
   /metrics:
     get:
-      tags: [Metrics]
+      tags:
+        - Metrics
       summary: Prometheus metrics
       description: |
         Public on the API process. Behind Nginx in Docker this path returns 403;
@@ -505,5 +1480,15 @@ paths:
           description: Prometheus text format
           content:
             text/plain:
-              schema:
-                type: string
+              example: |
+                # HELP http_request_total Total number of HTTP requests
+                # TYPE http_request_total counter
+                http_request_total{method="GET",route="/api/health/live",status_code="200"} 3
+        "403":
+          description: Blocked by Nginx reverse proxy
+          content:
+            text/html:
+              example: |
+                <html><head><title>403 Forbidden</title></head><body><h1>403 Forbidden</h1></body></html>
+        "500":
+          $ref: "#/components/responses/InternalError"
