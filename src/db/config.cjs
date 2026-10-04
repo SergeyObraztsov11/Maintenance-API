@@ -14,6 +14,11 @@ module.exports = {
         ...shared,
         logging: console.log,
     },
+    test: {
+        ...shared,
+        database: process.env.DB_NAME || "maintenance_test",
+        logging: false,
+    },
     production: {
         ...shared,
         logging: false,
