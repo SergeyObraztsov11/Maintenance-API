@@ -7,12 +7,15 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "seed": "node src/scripts/seedDb.js",
-    "lint:check": "eslint src",
-    "lint:fix": "eslint src --fix",
-    "format:check": "prettier --check src",
-    "format:fix": "prettier --write src",
+    "lint:check": "eslint src tests jest.config.js",
+    "lint:fix": "eslint src tests jest.config.js --fix",
+    "format:check": "prettier --check src tests jest.config.js",
+    "format:fix": "prettier --write src tests jest.config.js",
     "check": "npm run lint:check && npm run format:check",
     "fix": "npm run lint:fix && npm run format:fix",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
+    "test:db:migrate": "sequelize-cli db:migrate --env test",
     "docker:build": "docker build -t maintenance-api .",
     "docker:up": "docker compose up --build -d",
     "docker:down": "docker compose down",
@@ -51,7 +54,9 @@
     "eslint": "^10.11.0",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.12.0",
+    "jest": "^30.5.2",
     "prettier": "^3.9.8",
-    "sequelize-cli": "^6.6.5"
+    "sequelize-cli": "^6.6.5",
+    "supertest": "^7.3.1"
   }
 }

@@ -14,6 +14,12 @@ module.exports = {
         ...shared,
         logging: console.log,
     },
+    test: {
+        ...shared,
+        // Keep tests off the development database even if .env has DB_NAME=maintenance.
+        database: process.env.TEST_DB_NAME || "maintenance_test",
+        logging: false,
+    },
     production: {
         ...shared,
         logging: false,

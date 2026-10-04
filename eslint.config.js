@@ -18,6 +18,14 @@ export default [
         },
     },
     {
-        ignores: ["node_modules/**", "docs/**"],
+        files: ["tests/**/*.js"],
+        languageOptions: {
+            globals: {
+                ...globals.jest,
+            },
+        },
+    },
+    {
+        ignores: ["node_modules/**", "docs/**", "coverage/**"],
     },
 ];
