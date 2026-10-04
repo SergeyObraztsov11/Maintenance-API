@@ -35,8 +35,10 @@ function mapSequelizeError(err) {
         const message = String(err.parent?.detail ?? err.message ?? "");
         const isDeleteRestrict =
             /is still referenced|update or delete/i.test(message) ||
-            err.parent?.code === "23503" &&
-                /delete/i.test(String(err.parent?.message ?? err.message ?? ""));
+            (err.parent?.code === "23503" &&
+                /delete/i.test(
+                    String(err.parent?.message ?? err.message ?? ""),
+                ));
 
         if (isDeleteRestrict) {
             return new ConflictError(

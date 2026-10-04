@@ -166,14 +166,17 @@ npm run test:coverage     # то же + отчёт coverage/
 
 ## CI
 
-На каждый push в `main` и на каждый Pull Request GitHub Actions запускает:
+На каждый push в `main` и на каждый Pull Request GitHub Actions запускает отдельные checks:
 
-1. `npm run check` — ESLint + Prettier  
-2. `npm test` — Jest с Postgres (service container)  
-3. `docker build` — сборка образа API  
+| Check | Команда |
+|-------|---------|
+| ESLint | `npm run lint:check` |
+| Prettier | `npm run format:check` |
+| Jest | `npm test` (Postgres service) |
+| Docker build | `docker build` |
 
 Workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml).  
-Статус смотри во вкладке **Actions** репозитория или в checks у PR.
+Статус — вкладка **Actions** / checks у PR (видно, какой именно шаг упал).
 
 ## Документация
 

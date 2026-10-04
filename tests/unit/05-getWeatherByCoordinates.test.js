@@ -8,9 +8,8 @@ jest.unstable_mockModule("../../src/config/index.js", () => ({
     },
 }));
 
-const { getWeatherByCoordinates } = await import(
-    "../../src/weather/getWeatherByCoordinates.js"
-);
+const { getWeatherByCoordinates } =
+    await import("../../src/weather/getWeatherByCoordinates.js");
 
 describe("getWeatherByCoordinates", () => {
     beforeEach(() => {

@@ -10,9 +10,12 @@ jest.unstable_mockModule("../../src/repositories/requestRepository.js", () => ({
     requestRepository,
 }));
 
-jest.unstable_mockModule("../../src/repositories/equipmentRepository.js", () => ({
-    equipmentRepository: {},
-}));
+jest.unstable_mockModule(
+    "../../src/repositories/equipmentRepository.js",
+    () => ({
+        equipmentRepository: {},
+    }),
+);
 
 jest.unstable_mockModule("../../src/models/index.js", () => ({
     Technician: { findAll: jest.fn() },
@@ -89,7 +92,9 @@ describe("requestService.changeStatus", () => {
         requestRepository.findById.mockResolvedValue({
             id: requestId,
             status: "new",
-            assignees: [{ technician: { id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" } }],
+            assignees: [
+                { technician: { id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" } },
+            ],
         });
 
         await expect(
@@ -111,10 +116,14 @@ describe("requestService.changeStatus", () => {
             status: "rejected",
         });
 
-        const result = await requestService.changeStatus(requestId, "rejected", {
-            role: "technician",
-            technicianId: techId,
-        });
+        const result = await requestService.changeStatus(
+            requestId,
+            "rejected",
+            {
+                role: "technician",
+                technicianId: techId,
+            },
+        );
 
         expect(result.status).toBe("rejected");
     });

@@ -287,12 +287,15 @@ export const requestRepository = {
                 transaction: t,
             });
             if (leadCount !== 1) {
-                throw new ValidationError("Crew must contain exactly one lead", [
-                    {
-                        field: "assignees",
-                        message: "Exactly one lead is required",
-                    },
-                ]);
+                throw new ValidationError(
+                    "Crew must contain exactly one lead",
+                    [
+                        {
+                            field: "assignees",
+                            message: "Exactly one lead is required",
+                        },
+                    ],
+                );
             }
         });
 
