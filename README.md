@@ -1,523 +1,224 @@
 ﻿# Maintenance API
 
-REST API на Express для учёта оборудования и заявок на техническое обслуживание.  
-Данные хранятся в **PostgreSQL** (Sequelize + миграции).
+REST API на Express: оборудование и заявки на ТО. PostgreSQL (Sequelize, миграции), JWT (access + refresh cookie).  
+Docker Compose: Nginx, Prometheus, Grafana.
 
-## Требования к окружению
+## Оглавление
 
-- Node.js **20+**
+- [Схема стека](#схема-стека)
+- [Требования](#требования)
+- [Установка](#установка)
+- [Запуск](#запуск)
+- [Роли](#роли)
+- [Безопасность](#безопасность)
+- [Структура проекта](#структура-проекта)
+- [API-документация](#api-документация)
+- [Тесты](#тесты)
+- [Документация](#документация)
+- [Скрипты и команды](#скрипты-и-команды)
+- [Демо-логины](#демо-логины-после-seed)
+
+## Схема стека
+
+```text
+Клиент (Postman / Swagger / фронт)
+    → Nginx (:8080)
+        → API Node (:3000)
+            → PostgreSQL
+Prometheus ← /metrics (внутренняя сеть)
+Grafana ← Prometheus + PostgreSQL
+```
+
+Снаружи — Nginx. Grafana и Prometheus: `127.0.0.1`. Подробнее: [`docs/architecture.md`](docs/architecture.md).
+
+## Требования
+
+- Node.js 20+
 - npm
-- Docker Desktop (PostgreSQL; для мониторинга — ещё Prometheus и Grafana)
-- (опционально) Postman для проверки коллекции
+- Docker (Postgres; полный стек — Nginx, Prometheus, Grafana)
+- Postman — по желанию (`docs/postman/`)
 
-## Установка и запуск
+## Установка
 
 ```bash
 git clone https://github.com/SergeyObraztsov11/Maintenance-API.git
 cd Maintenance-API
 npm install
 cp .env.example .env
-docker compose up -d db
-npm run db:migrate
-npm run seed
-npm start
 ```
 
-Режим с автоперезапуском:
+На сервере задайте свои `JWT_ACCESS_SECRET` и `JWT_REFRESH_SECRET` (см. [`docs/deployment.md`](docs/deployment.md)).
 
-```bash
-npm run dev
-```
-
-Проверка: [http://localhost:3000/api/health](http://localhost:3000/api/health) -> `{"status":"ok"}`.
-
-### Docker (весь стек одной командой)
-
-```bash
-cp .env.example .env
-npm run docker:up
-```
-
-Поднимаются: **Postgres**, **API** (миграции при старте), **Nginx**, **Prometheus**, **Grafana**.
-
-- API снаружи: http://localhost:8080 (через Nginx)
-- Grafana: http://127.0.0.1:3001 (`admin` / `admin`)
-- Демо-данные (по желанию): `npm run docker:seed`
-
-Остановка: `npm run docker:down`.
-
-Подробности мониторинга и ограничений доступа: [`deploy/README.md`](deploy/README.md).
-
-### База данных
-
-Развёртывание с нуля (после `cp .env.example .env` и `npm install`):
-
-```bash
-docker compose up -d db
-npm run db:migrate
-npm run seed
-npm start
-```
-
-Схема создаётся только миграциями (`sync({ force })` не используется).
-
-#### Откат миграций и восстановление
-
-Откатить последнюю миграцию:
-
-```bash
-npm run db:migrate:undo
-```
-
-Откатить все миграции (таблицы удаляются; данные сидов тоже):
-
-```bash
-npm run db:migrate:undo:all
-```
-
-Восстановить окружение после полного отката:
-
-```bash
-npm run db:migrate
-npm run seed
-```
-
-Если нужно «с нуля» и контейнер: `docker compose down -v` (удалит том Postgres), затем снова `docker compose up -d db` → migrate → seed.
-## npm-скрипты
-
-| Команда | Действие |
-|---------|------------|
-| `npm start` | запуск сервера |
-| `npm run dev` | запуск с автоперезапуском |
-| `npm run seed` | наполнение БД демо-данными |
-| `npm run lint:check` | проверка ESLint |
-| `npm run lint:fix` | ESLint с автоисправлением |
-| `npm run format:check` | проверка Prettier |
-| `npm run format:fix` | форматирование Prettier |
-| `npm run check` | lint + format (только проверка) |
-| `npm run fix` | lint + format (исправление) |
-| `npm test` | unit + integration тесты (Jest) |
-| `npm run test:coverage` | тесты с отчётом coverage |
-| `npm run test:db:migrate` | миграции в `maintenance_test` |
-| `npm run docker:build` | сборка Docker-образа API |
-| `npm run docker:up` | поднять compose (сборка + фон) |
-| `npm run docker:down` | остановить compose |
-| `npm run docker:logs` | логи сервиса api |
-| `npm run db:migrate` | применить миграции |
-| `npm run db:migrate:undo` | откатить последнюю миграцию |
-| `npm run db:migrate:undo:all` | откатить все миграции |
-| `npm run db:show-tables` | список таблиц в БД |
-| `npm run db:show-table -- [table_name]` | просмотр структуры таблицы в консоли |
-| `npm run db:show-table-data -- [table_name]` | просмотр данных таблицы в консоли |
-
-## Переменные окружения
+### Переменные окружения
 
 | Переменная | По умолчанию | Описание |
 |------------|--------------|----------|
-| `PORT` | `3000` | Порт HTTP-сервера |
-| `NODE_ENV` | `development` | Режим (`production` скрывает внутренние сообщения ошибок) |
-| `CORS_ORIGINS` | `http://localhost:5500` | Разрешённые origin через запятую |
-| `RATE_LIMIT_WINDOW_MS` | `60000` | Окно rate limit, мс |
-| `RATE_LIMIT_MAX` | `100` | Максимум запросов к `/api` за окно |
-| `REQUEST_TIMEOUT_MS` | `5000` | Таймаут запроса к погодному API |
-| `FORECAST_BASE_URL` | `https://api.open-meteo.com` | Базовый URL прогноза |
-| `WEATHER_WIND_MAX_MS` | `12` | Порог ветра (м/с) для наружных работ |
-| `WEATHER_PRECIPITATION_MAX_MM` | `0.1` | Порог осадков (мм) |
-| `LOG_LEVEL` | `info` | Уровень логов: `error` / `warn` / `info` / `debug` |
-| `DB_HOST` | `localhost` | Хост PostgreSQL |
-| `DB_PORT` | `5433` | Порт PostgreSQL на хосте (внутри контейнера — 5432) |
-| `DB_NAME` | `maintenance` | Имя базы |
-| `DB_USER` | `maintenance` | Пользователь |
-| `DB_PASSWORD` | `maintenance` | Пароль |
-| `DB_POOL_MIN` | `0` | Минимум соединений в пуле |
-| `DB_POOL_MAX` | `10` | Максимум соединений в пуле |
+| `PORT` | `3000` | Порт API |
+| `NODE_ENV` | `development` | В `production` скрывает внутренности ошибок |
+| `CORS_ORIGINS` | `http://localhost:5500` | Origin через запятую |
+| `DB_HOST` / `DB_PORT` / `DB_NAME` / `DB_USER` / `DB_PASSWORD` | localhost / 5433 / … | PostgreSQL |
+| `TEST_DB_NAME` | `maintenance_test` | БД для Jest |
+| `JWT_ACCESS_SECRET` | (из `.env.example`) | Секрет access JWT |
+| `JWT_ACCESS_TTL_SECONDS` | `900` | TTL access (~15 мин) |
+| `JWT_REFRESH_SECRET` | (из `.env.example`) | Секрет refresh JWT |
+| `JWT_REFRESH_TTL_SECONDS` | `604800` | TTL refresh (~7 дней) |
+| `REFRESH_COOKIE_NAME` | `refreshToken` | Имя cookie |
+| `REFRESH_COOKIE_SAMESITE` | `lax` | SameSite cookie |
+| `RATE_LIMIT_WINDOW_MS` / `RATE_LIMIT_MAX` | `60000` / `100` | Лимит `/api` |
+| `LOG_LEVEL` | `info` | `silent` / `error` / `warn` / `info` / `debug` |
+| `FORECAST_BASE_URL` | Open-Meteo | Погодный провайдер |
+| `WEATHER_WIND_MAX_MS` / `WEATHER_PRECIPITATION_MAX_MM` | `12` / `0.1` | Пороги «можно работать на улице» |
 
-## Эндпоинты
+Полный список — [`.env.example`](.env.example).
 
-| Метод | Путь | Назначение |
-|-------|------|------------|
-| GET | `/api/health` | Проверка доступности |
-| GET | `/api/equipment` | Список оборудования (фильтры, сортировка, пагинация) |
-| POST | `/api/equipment` | Создание оборудования |
-| GET | `/api/equipment/:id` | Карточка оборудования |
-| PATCH | `/api/equipment/:id` | Частичное обновление |
-| DELETE | `/api/equipment/:id` | Удаление (запрещено при открытых заявках) |
-| GET | `/api/equipment/:id/requests` | Заявки по единице оборудования |
-| GET | `/api/equipment/:id/weather` | Прогноз и пригодность окна для наружных работ |
-| GET | `/api/requests` | Список заявок |
-| POST | `/api/requests` | Создание заявки |
-| GET | `/api/requests/:id` | Карточка заявки |
-| PATCH | `/api/requests/:id` | Редактирование полей |
-| PATCH | `/api/requests/:id/status` | Смена статуса с проверкой перехода |
-| DELETE | `/api/requests/:id` | Удаление заявки |
-| GET | `/api/requests/:id/history` | Журнал изменений статуса |
-| POST | `/api/requests/:id/assignees` | Назначение бригады (замена списка) |
-| DELETE | `/api/requests/:id/assignees/:technicianId` | Снятие специалиста |
-| GET | `/api/sites/:id/summary` | Сводка по площадке |
-| GET | `/api/reports/sites/:id/summary` | То же (alias) |
-| GET | `/api/reports/equipment-load` | Нагрузка на оборудование |
-| GET | `/api/reports/technicians/workload` | Нагрузка специалистов |
+## Запуск
 
-Query для списков (примеры): `status`, `type` / `priority`, `equipmentId`, `createdAtFrom`, `createdAtTo`, `installedAtFrom` / `installedAtTo` (equipment), `plannedAtFrom` / `plannedAtTo` (requests), `sortBy`, `sortOrder`, `page`, `limit`.  
-Для weather: `days` (1–7, по умолчанию 3).
+### Docker Compose
 
-## Схема БД
-
-![ER-диаграмма](docs/er-diagram.jpg)
-
-| Связь | Тип | Реализация |
-|-------|-----|------------|
-| Площадка → оборудование | 1:N | `equipment.site_id` |
-| Оборудование → паспорт | 1:1 | `equipment_passports.equipment_id` UNIQUE |
-| Оборудование → заявки | 1:N | `maintenance_requests.equipment_id` |
-| Заявка → журнал статусов | 1:N | `request_status_history.request_id` |
-| Заявки ↔ специалисты | N:M | `request_assignees` (`role`, `hours`), UNIQUE `(request_id, technician_id)` |
-
-Координаты хранятся у площадки. В ответе API у оборудования поле `location` собирается из связанного site (контракт кейса 2).  
-В карточке оборудования дополнительно отдаётся паспорт, в карточке заявки — assignees.
-
-### Нормализация
-
-Схема приведена к 3НФ:
-
-- **Площадка отдельно от оборудования.** Координаты, код и регион относятся к площадке, а не к каждой единице. Иначе одни и те же `lat`/`lon` дублировались бы на всём оборудовании площадки.
-- **Паспорт — отдельная таблица 1:1.** Производитель, модель и мощность — атрибуты паспорта, не статус эксплуатации. Уникальный `equipment_id` гарантирует один паспорт на единицу.
-- **Журнал статусов отдельно от заявки.** История — append-only: смена статуса пишет новую строку, прошлые записи не правятся. Так заявка хранит только текущий статус, а аудит — в `request_status_history`.
-- **Специалисты и назначения — N:M через `request_assignees`.** Роль (`lead`/`member`) и часы — атрибуты связи, не специалиста и не заявки. UNIQUE `(request_id, technician_id)` запрещает повторное назначение на уровне БД.
-
-### Правила удаления (ON DELETE)
-
-| Связь | Правило | Зачем |
-|-------|---------|--------|
-| site → equipment | `RESTRICT` | нельзя удалить площадку с оборудованием |
-| equipment → passport | `CASCADE` | паспорт исчезает вместе с оборудованием |
-| equipment → requests | `RESTRICT` | нельзя удалить оборудование при заявках; сервис дополнительно запрещает удаление при незакрытых заявках (409) |
-| request → history / assignees | `CASCADE` | при удалении заявки чистятся журнал и назначения |
-| technician → assignees | `RESTRICT` | нельзя удалить специалиста, пока он назначен на заявки |
-
-## Модель данных
-
-### Оборудование (`equipment`)
-
-| Поле | Тип | Правила |
-|------|-----|---------|
-| `id` | string (uuid) | Генерирует сервер |
-| `name` | string | 3–100 символов, обязательно |
-| `type` | enum | `turbine` \| `inverter` \| `sensor` \| `substation` |
-| `serialNumber` | string | Уникальный в системе |
-| `location` | `{ lat, lon }` | Координаты объекта |
-| `status` | enum | `operational` \| `maintenance` \| `fault` \| `decommissioned` |
-| `installedAt` | ISO-дата | Не в будущем |
-| `createdAt` / `updatedAt` | ISO date-time | Выставляет сервер |
-
-### Заявка (`maintenance request`)
-
-| Поле | Тип | Правила |
-|------|-----|---------|
-| `id` | string (uuid) | Генерирует сервер |
-| `equipmentId` | string | Ссылка на существующее оборудование |
-| `title` | string | 5–120 символов, обязательно |
-| `description` | string | До 2000 символов |
-| `priority` | enum | `low` \| `medium` \| `high` \| `critical` |
-| `status` | enum | `new` \| `in_progress` \| `done` \| `rejected` (по умолчанию `new`) |
-| `plannedAt` | ISO date-time | Необязательно |
-| `author` | string | Автор заявки |
-| `createdAt` / `updatedAt` | ISO date-time | Выставляет сервер |
-
-### Переходы статуса заявки
-
-```text
-new -> in_progress -> done
-new -> rejected
-in_progress -> rejected
+```bash
+cp .env.example .env     # настройки
+npm run docker:up        # весь стек
+npm run docker:seed      # демо-данные в контейнере api
 ```
 
-Из `done` и `rejected` переходы запрещены -> **409 Conflict**.
+| Сервис | URL |
+|--------|-----|
+| API (Nginx) | http://localhost:8080 |
+| Health live | http://localhost:8080/api/health/live |
+| Health ready | http://localhost:8080/api/health/ready |
+| Swagger UI | http://localhost:8080/api/docs |
+| OpenAPI JSON | http://localhost:8080/api/openapi.json |
+| Grafana | http://127.0.0.1:3001 (`admin` / `admin`) |
+| Prometheus | http://127.0.0.1:9090 |
 
-Дополнительно:
+Остановка: `npm run docker:down`.  
+Деплой и мониторинг: [`docs/deployment.md`](docs/deployment.md).
 
-- смена статуса и запись в `request_status_history` выполняются в одной транзакции;
-- переход в `in_progress` без assignees запрещён (409);
-- назначение бригады — одной транзакцией (полная замена списка), ровно один `lead` иначе 422;
-- повтор одного `technicianId` в списке запрещён (422).
+### API на хосте
 
-## Формат ошибки
-
-```json
-{
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Invalid request data",
-    "details": [
-      { "field": "name", "message": "Too small: expected string to have >=3 characters" }
-    ],
-    "requestId": "b1f2c3d4-...."
-  }
-}
+```bash
+docker compose up -d db   # только Postgres в Docker
+npm run db:migrate        # миграции в БД из .env
+npm run seed              # демо-данные
+npm run dev               # API на хосте с --watch
 ```
 
-Типичные коды: `VALIDATION_ERROR` (422), `NOT_FOUND` (404), `CONFLICT` (409), `RATE_LIMIT_EXCEEDED` (429), `WEATHER_PROVIDER_ERROR` (502), `INTERNAL_ERROR` (500).
+API: http://localhost:3000 · Swagger: http://localhost:3000/api/docs
 
-## Примеры запросов и ответов
+## Роли
 
-### Создание оборудования
+| Роль | Права |
+|------|--------|
+| `viewer` | Чтение equipment / requests / reports / history. Register → viewer |
+| `technician` | Как viewer + создание/правка заявок; статус только у назначенных себе |
+| `admin` | Полный доступ |
 
-`POST /api/equipment`
-
-```json
-{
-  "name": "Turbine A1",
-  "type": "turbine",
-  "serialNumber": "SN-T-001",
-  "location": { "lat": 55.75, "lon": 37.61 },
-  "status": "operational",
-  "installedAt": "2024-01-15"
-}
-```
-
-Ответ **201** + заголовок `Location`:
-
-```json
-{
-  "data": {
-    "id": "11111111-1111-1111-1111-111111111111",
-    "name": "Turbine A1",
-    "type": "turbine",
-    "serialNumber": "SN-T-001",
-    "location": { "lat": 55.75, "lon": 37.61 },
-    "status": "operational",
-    "installedAt": "2024-01-15",
-    "createdAt": "...",
-    "updatedAt": "..."
-  }
-}
-```
-
-### Список с метаданными
-
-`GET /api/equipment?status=operational&page=1&limit=10`
-
-```json
-{
-  "data": [ /* ... */ ],
-  "meta": { "total": 2, "page": 1, "limit": 10 }
-}
-```
-
-### Смена статуса заявки
-
-`PATCH /api/requests/{id}/status`
-
-```json
-{ "status": "in_progress" }
-```
-
-Недопустимый переход (например `new` -> `done`) -> **409**.
-
-### Погода по оборудованию
-
-`GET /api/equipment/{id}/weather?days=3`
-
-В ответе: координаты, правила пригодности из env, прогноз по дням с флагом `suitableForOutdoorWork`.  
-День пригоден, если осадки ≤ `WEATHER_PRECIPITATION_MAX_MM` и ветер ≤ `WEATHER_WIND_MAX_MS`.  
-Скорость ветра запрашивается у Open-Meteo в м/с (`wind_speed_unit=ms`), чтобы совпадать с порогом в env.
-
-### Назначение бригады
-
-`POST /api/requests/{id}/assignees` — **полная замена** назначений в одной транзакции.
-
-```json
-{
-  "assignees": [
-    { "technicianId": "...", "role": "lead", "hours": 4 },
-    { "technicianId": "...", "role": "member", "hours": 2 }
-  ]
-}
-```
-
-В списке должен быть ровно один `lead`. Иначе → **422** и откат.  
-Несуществующий специалист → **404**.  
-`DELETE /api/requests/{id}/assignees/{technicianId}` — снять одного.
-
-### Отчёты
-
-Отчёты считаются **raw SQL** с параметризованными подстановками (без конкатенации ввода в текст запроса).
-
-**Сводка по площадке** — `GET /api/sites/{id}/summary`  
-(alias: `GET /api/reports/sites/{id}/summary`)
-
-- данные площадки (`id`, `name`, `code`, `region`);
-- число единиц оборудования и разбивка по `status`;
-- число заявок: разбивка по `status` и по `priority`;
-- `avgCloseTimeHours` — среднее время от создания заявки до первого перехода в `done` (часы; `null`, если закрытых нет).
-
-Несуществующая площадка → **404**.
-
-**Нагрузка на оборудование** — `GET /api/reports/equipment-load`
-
-Query (опционально): `from`, `to` (ISO, фильтр по `created_at` заявки), `minRequests` (HAVING, по умолчанию `0`).
-
-По каждой единице:
-- `requestsCount`, `closedRequestsCount`;
-- `totalPlannedHours` (сумма `request_assignees.hours`);
-- `lastServicedAt` (время последнего перехода заявки в `done`).
-
-**Нагрузка специалистов** — `GET /api/reports/technicians/workload`
-
-- по каждому специалисту: `assignmentsCount`, `totalHours`;
-- сортировка по убыванию часов.
-
-### Ошибка валидации
-
-`POST /api/equipment` с `{ "name": "ab" }` -> **422** и массив `details`.
-
-### Дубль серийного номера
-
-Повторный `serialNumber` -> **409 Conflict**.
+Без токена → **401**. Недостаточно прав → **403**.  
+Контракт API — в Swagger, здесь не дублируется.
 
 ## Безопасность
 
-- **CORS** — только origin из `CORS_ORIGINS` (не `*`). По умолчанию `http://localhost:5500` — типичный origin для статической HTML-страницы (Live Server). Добавляйте свои фронтенд-origin через запятую.
-- **Rate limit** — на префикс `/api`: при превышении **429**, заголовки `RateLimit-*`, в теле единый формат ошибки с `requestId`.
-- **Helmet** — защитные HTTP-заголовки.
-- **Лимит тела** — `express.json({ limit: "100kb" })`.
-- **Секреты** — только в `.env`, не в репозитории. В `production` стек и внутренние детали в ответ не отдаются.
-- Cookie в проекте не используются.
-
-## Логирование
-
-Каждый запрос логируется (JSON): метод, путь, код ответа, длительность, `requestId`.  
-Идентификатор также возвращается в заголовке `X-Request-Id` и в теле ошибки.
-
-## Тесты (Jest)
-
-Нужен запущенный Postgres (`docker compose up -d db`).  
-При `npm test` Jest сам создаст БД `maintenance_test` (если её нет) и накатит миграции.
-
-```bash
-docker compose up -d db
-npm test
-npm run test:coverage
-```
-
-При необходимости вручную: `npm run test:db:migrate`.
-
-- Unit: переходы статусов, crew/assignees, роли (`allowedRoles`), weather (mock провайдера)
-- Integration: auth, 401/403/409, CRUD equipment, reports/health, delete/422
-- Migrations: `db:migrate:undo:all` → `db:migrate`, плюс откат последней миграции и повторный накат
-- Тесты ходят в Postgres `TEST_DB_NAME` (по умолчанию `maintenance_test`) и чистят таблицы между кейсами
-
-## OpenAPI / Swagger
-
-Интерактивная документация (без JWT):
-
-- UI: http://localhost:3000/api/docs (или через Nginx http://localhost:8080/api/docs)
-- JSON: http://localhost:3000/api/openapi.json
-
-Спека: `src/docs/openapi.yaml`. В Swagger UI можно нажать **Authorize** и вставить Bearer accessToken после login.
-
-## Мониторинг (Grafana / Prometheus)
-
-Стек мониторинга поднимается вместе с инфраструктурой:
-
-```bash
-docker compose up -d db prometheus grafana
-npm run dev
-```
-
-| Что | URL |
-|-----|-----|
-| Grafana | http://localhost:3001 (admin / admin) |
-| Prometheus | http://localhost:9090 |
-| Метрики API | http://localhost:3000/metrics |
-
-Дашборды и алерты подключаются автоматически (provisioning).  
-Полное описание, runbook по алертам и типовым отказам: [`deploy/README.md`](deploy/README.md).
-
-## Postman
-
-Коллекция: [`docs/postman/maintenance-api.postman_collection.json`](docs/postman/maintenance-api.postman_collection.json)
-
-Import в Postman → `docker compose up -d db` → `npm run db:migrate` → `npm run seed` → `npm start`.
-
-Порядок папок: **Health** → **Setup** → **Equipment** → **Requests** → **Reports** → **Negative**.
-
-### Сценарии в коллекции
-
-**Health**
-- GET health
-
-**Setup**
-- Resolve seed IDs (сохраняет `siteId`, `technicianId`, `technicianId2` из сидов)
-
-**Equipment**
-- POST create equipment
-- GET list equipment
-- GET equipment by id
-- PATCH update equipment
-- GET equipment weather
-- GET equipment requests
-
-**Requests**
-- POST create request
-- GET list requests
-- GET request by id
-- PATCH update request
-- POST set assignees (lead + member)
-- PATCH change status to `in_progress`
-- GET request status history
-- DELETE assignee (member)
-- DELETE request
-- DELETE equipment
-
-**Reports**
-- GET site summary (`/api/sites/:id/summary`)
-- GET equipment load (`/api/reports/equipment-load`)
-- GET technicians workload (`/api/reports/technicians/workload`)
-
-**Negative**
-- 422 validation error — short name
-- 404 equipment not found
-- 409 duplicate serial number
-- 409 invalid status transition
-- 429 rate limit
-- 409 `in_progress` without assignees
-- 404 assignee unknown technician
-- 422 assignees without lead
-- 422 assignee invalid role
-- 404 site summary not found
-
-## Демо-данные
-
-```bash
-npm run seed
-```
-
-Заполняет PostgreSQL демо-данными (площадки, оборудование, паспорта, специалисты, заявки, history, assignees).
+- Access JWT: `Authorization: Bearer …`, короткий TTL
+- Refresh: httpOnly cookie (`path=/api/auth`), `Secure` в `production`
+- `SameSite=lax` по умолчанию; детали — [`docs/architecture.md`](docs/architecture.md)
+- Отдельный rate limit на login; одинаковый текст ошибки при неверном логине/пароле
+- За Nginx: `trust proxy`
+- Секреты только в `.env`
 
 ## Структура проекта
 
 ```text
 src/
-  app.js                 # сборка Express (без listen)
-  server.js              # запуск HTTP-сервера, подключение к БД
-  config/                # конфигурация из env
-  db/                    # Sequelize, миграции
-  models/                # модели и ассоциации
-  routes/                # маршруты
-  controllers/           # HTTP-слой
-  services/              # бизнес-логика
-  repositories/          # доступ к PostgreSQL
-  validators/            # схемы Zod
-  middlewares/           # validate, requestId, logger, 404, errors, ...
-  errors/                # типы ошибок приложения
-  weather/               # клиент Open-Meteo (кейс 1)
-  logger/                # уровни логирования
-  scripts/seedDb.js      # демо-данные
-docs/
-  er-diagram.jpg         # ER-диаграмма
-  postman/               # коллекция Postman
+  app.js / server.js
+  config/ db/ migrations/ models/
+  routes/ controllers/ services/ repositories/
+  middlewares/ validators/ errors/
+  docs/openapi.yaml
+  weather/
+deploy/                 # nginx, prometheus, grafana, entrypoint
+tests/                  # Jest unit + integration
+docs/                   # architecture, deployment, database, testing, postman
 ```
 
-Слои: **routes -> controllers -> services -> repositories**.  
-Погодный модуль вызывается из `weatherService`, не из контроллера напрямую.
+Слои: `routes → controllers → services → repositories`. Подробнее: [`docs/architecture.md`](docs/architecture.md).
+
+## API-документация
+
+Контракт API — OpenAPI / Swagger UI (методы, тела, ошибки). В README не дублируется.
+
+| Что | URL (через Nginx) | URL (API на хосте) |
+|-----|-------------------|--------------------|
+| Swagger UI | http://localhost:8080/api/docs | http://localhost:3000/api/docs |
+| OpenAPI JSON | http://localhost:8080/api/openapi.json | http://localhost:3000/api/openapi.json |
+
+Спека в репо: [`src/docs/openapi.yaml`](src/docs/openapi.yaml).
+
+## Тесты
+
+```bash
+docker compose up -d db   # поднять только Postgres (сервис db)
+npm test                  # Jest: создаст maintenance_test при необходимости, migrate, прогон
+npm run test:coverage     # то же + отчёт coverage/
+```
+
+Подробнее: [`docs/testing.md`](docs/testing.md).
+
+## Документация
+
+| Документ | Содержание |
+|----------|------------|
+| [`docs/architecture.md`](docs/architecture.md) | Стек, слои, auth, ограничения |
+| [`docs/deployment.md`](docs/deployment.md) | Деплой, Nginx, мониторинг, runbook |
+| [`docs/database.md`](docs/database.md) | Таблицы, связи, ER-диаграмма |
+| [`docs/testing.md`](docs/testing.md) | Тесты |
+| [`docs/postman/`](docs/postman/) | Postman |
+
+Конфиги стека: [`deploy/`](deploy/).
+
+## Скрипты и команды
+
+### API
+
+| Команда | Что делает |
+|---------|------------|
+| `npm run dev` | Запуск API на хосте с автоперезапуском (`node --watch`) |
+| `npm start` | Запуск API на хосте без watch |
+| `npm run seed` | Загрузка демо-данных в БД из `.env` (процесс на хосте) |
+
+### Docker
+
+| Команда | Что делает |
+|---------|------------|
+| `docker compose up -d db` | Поднять только Postgres |
+| `npm run docker:up` | Собрать образ API и поднять весь стек (db, api, nginx, prometheus, grafana) |
+| `npm run docker:down` | Остановить и убрать контейнеры стека (тома остаются) |
+| `docker compose down -v` | То же + удалить тома (БД с нуля) |
+| `npm run docker:seed` | Сиды внутри контейнера `api` |
+| `npm run docker:logs` | Логи контейнера `api` в follow-режиме |
+| `npm run docker:build` | Собрать образ `maintenance-api` без compose |
+
+### База данных
+
+| Команда | Что делает |
+|---------|------------|
+| `npm run db:migrate` | Применить миграции (БД из `.env`) |
+| `npm run db:migrate:undo` | Откатить последнюю миграцию |
+| `npm run db:migrate:undo:all` | Откатить все миграции |
+| `npm run test:db:migrate` | Миграции в тестовую БД (`--env test`) |
+| `npm run db:show-tables` | Список таблиц в Postgres через `psql` в контейнере `db` |
+
+### Тесты и качество кода
+
+| Команда | Что делает |
+|---------|------------|
+| `npm test` | Прогон Jest (ESM) |
+| `npm run test:coverage` | Jest с coverage |
+| `npm run lint:check` / `lint:fix` | ESLint: проверка / автоисправление |
+| `npm run format:check` / `format:fix` | Prettier: проверка / запись |
+| `npm run check` | lint + format check |
+| `npm run fix` | lint fix + format write |
+
+## Демо-логины (после seed)
+
+Пароль: `password123`  
+`admin@example.com` · `tech1@example.com` · `viewer@example.com`
