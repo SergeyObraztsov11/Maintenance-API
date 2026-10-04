@@ -1,0 +1,15 @@
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  # API running inside docker compose (service name "api")
+  - job_name: maintenance-api
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["api:3000"]
+
+  # API running on the host (npm run dev)
+  - job_name: maintenance-api-host
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["host.docker.internal:3000"]
