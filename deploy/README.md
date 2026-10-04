@@ -4,28 +4,44 @@
 
 ## Запуск
 
-Из корня проекта:
+### Весь стек в Docker (одна команда)
 
 ```bash
-# Инфраструктура
-docker compose up -d db prometheus grafana
+cp .env.example .env
+npm run docker:up
+# при необходимости демо-данные:
+npm run docker:seed
+```
 
-# API на хосте (Prometheus ходит на host.docker.internal:3000)
+API стартует после миграций (`deploy/docker-entrypoint.sh`). Вход: http://localhost:8080
+
+### Локальная разработка (API на хосте)
+
+```bash
+docker compose up -d db prometheus grafana
 npm run db:migrate
 npm run seed
 npm run dev
 ```
 
+Prometheus забирает метрики с `host.docker.internal:3000`.
+
 | Сервис | URL | Назначение |
 |--------|-----|------------|
-| API | http://localhost:3000 | Node-приложение на хосте |
-| Метрики | http://localhost:3000/metrics | Текст в формате Prometheus |
-| Health live | http://localhost:3000/api/health/live | Процесс жив |
-| Health ready | http://localhost:3000/api/health/ready | БД доступна |
-| Prometheus | http://localhost:9090 | Status → Targets |
-| Grafana | http://localhost:3001 | Логин: `admin` / `admin` |
+| API (через Nginx) | http://localhost:8080 | Публичный вход в compose-стеке |
+| API на хосте (dev) | http://localhost:3000 | `npm run dev` без Nginx |
+| Health live / ready | http://localhost:8080/api/health/... | Через Nginx |
+| Метрики | только внутри Docker (`api:3000/metrics`) | Через Nginx `/metrics` → **403** |
+| Prometheus | http://127.0.0.1:9090 | Только localhost |
+| Grafana | http://127.0.0.1:3001 | Только localhost (`admin` / `admin`) |
 
 Источники данных и дашборды подключаются автоматически.
+
+### Доступ к служебному
+
+- **`/metrics`** снаружи через Nginx закрыт (`403`). Prometheus скрейпит `api:3000` по внутренней сети compose.
+- **Grafana** и **Prometheus** слушают только `127.0.0.1` — с других машин в сети недоступны.
+- Postgres проброшен как `127.0.0.1:${DB_PORT}` (локальная разработка).
 
 ## Дашборды
 

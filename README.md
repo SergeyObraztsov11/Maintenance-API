@@ -31,15 +31,22 @@ npm run dev
 
 Проверка: [http://localhost:3000/api/health](http://localhost:3000/api/health) -> `{"status":"ok"}`.
 
-### Docker
+### Docker (весь стек одной командой)
 
 ```bash
 cp .env.example .env
 npm run docker:up
-# или: npm run docker:build && docker run --rm -p 3000:3000 --env-file .env maintenance-api
 ```
 
+Поднимаются: **Postgres**, **API** (миграции при старте), **Nginx**, **Prometheus**, **Grafana**.
+
+- API снаружи: http://localhost:8080 (через Nginx)
+- Grafana: http://127.0.0.1:3001 (`admin` / `admin`)
+- Демо-данные (по желанию): `npm run docker:seed`
+
 Остановка: `npm run docker:down`.
+
+Подробности мониторинга и ограничений доступа: [`deploy/README.md`](deploy/README.md).
 
 ### База данных
 
