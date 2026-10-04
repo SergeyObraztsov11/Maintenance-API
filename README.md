@@ -7,7 +7,7 @@ REST API на Express для учёта оборудования и заявок
 
 - Node.js **20+**
 - npm
-- Docker Desktop (PostgreSQL)
+- Docker Desktop (PostgreSQL; для мониторинга — ещё Prometheus и Grafana)
 - (опционально) Postman для проверки коллекции
 
 ## Установка и запуск
@@ -380,6 +380,24 @@ Query (опционально): `from`, `to` (ISO, фильтр по `created_at
 
 Каждый запрос логируется (JSON): метод, путь, код ответа, длительность, `requestId`.  
 Идентификатор также возвращается в заголовке `X-Request-Id` и в теле ошибки.
+
+## Мониторинг (Grafana / Prometheus)
+
+Стек мониторинга поднимается вместе с инфраструктурой:
+
+```bash
+docker compose up -d db prometheus grafana
+npm run dev
+```
+
+| Что | URL |
+|-----|-----|
+| Grafana | http://localhost:3001 (admin / admin) |
+| Prometheus | http://localhost:9090 |
+| Метрики API | http://localhost:3000/metrics |
+
+Дашборды и алерты подключаются автоматически (provisioning).  
+Полное описание, runbook по алертам и типовым отказам: [`deploy/README.md`](deploy/README.md).
 
 ## Postman
 
