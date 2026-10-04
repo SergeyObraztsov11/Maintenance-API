@@ -124,7 +124,6 @@ npm run seed
 | `WEATHER_WIND_MAX_MS` | `12` | Порог ветра (м/с) для наружных работ |
 | `WEATHER_PRECIPITATION_MAX_MM` | `0.1` | Порог осадков (мм) |
 | `LOG_LEVEL` | `info` | Уровень логов: `error` / `warn` / `info` / `debug` |
-| `API_KEY` | `dev-api-key-change-me` | Ключ для POST / PATCH / DELETE (заголовок `X-API-Key`) |
 | `DB_HOST` | `localhost` | Хост PostgreSQL |
 | `DB_PORT` | `5433` | Порт PostgreSQL на хосте (внутри контейнера — 5432) |
 | `DB_NAME` | `maintenance` | Имя базы |
@@ -382,7 +381,6 @@ Query (опционально): `from`, `to` (ISO, фильтр по `created_at
 - **Rate limit** — на префикс `/api`: при превышении **429**, заголовки `RateLimit-*`, в теле единый формат ошибки с `requestId`.
 - **Helmet** — защитные HTTP-заголовки.
 - **Лимит тела** — `express.json({ limit: "100kb" })`.
-- **API-ключ** — для `POST` / `PATCH` / `DELETE` нужен заголовок `X-API-Key` со значением из `API_KEY`. `GET` и `/api/health` без ключа.
 - **Секреты** — только в `.env`, не в репозитории. В `production` стек и внутренние детали в ответ не отдаются.
 - Cookie в проекте не используются.
 
