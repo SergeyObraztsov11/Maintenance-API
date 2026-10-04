@@ -4,17 +4,27 @@
 
 ## Запуск
 
-Из корня проекта:
+### Весь стек в Docker (одна команда)
 
 ```bash
-# Инфраструктура
-docker compose up -d db prometheus grafana
+cp .env.example .env
+npm run docker:up
+# при необходимости демо-данные:
+npm run docker:seed
+```
 
-# API на хосте (Prometheus ходит на host.docker.internal:3000)
+API стартует после миграций (`deploy/docker-entrypoint.sh`). Вход: http://localhost:8080
+
+### Локальная разработка (API на хосте)
+
+```bash
+docker compose up -d db prometheus grafana
 npm run db:migrate
 npm run seed
 npm run dev
 ```
+
+Prometheus забирает метрики с `host.docker.internal:3000`.
 
 | Сервис | URL | Назначение |
 |--------|-----|------------|
