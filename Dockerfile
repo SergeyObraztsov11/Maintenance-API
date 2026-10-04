@@ -20,7 +20,9 @@ COPY src ./src
 COPY .env.example ./
 COPY deploy/docker-entrypoint.sh /app/docker-entrypoint.sh
 
-RUN chmod +x /app/docker-entrypoint.sh && chown -R app:app /app
+RUN sed -i 's/\r$//' /app/docker-entrypoint.sh \
+    && chmod +x /app/docker-entrypoint.sh \
+    && chown -R app:app /app
 
 USER app
 

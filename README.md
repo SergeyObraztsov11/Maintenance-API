@@ -388,6 +388,15 @@ Query (опционально): `from`, `to` (ISO, фильтр по `created_at
 Каждый запрос логируется (JSON): метод, путь, код ответа, длительность, `requestId`.  
 Идентификатор также возвращается в заголовке `X-Request-Id` и в теле ошибки.
 
+## OpenAPI / Swagger
+
+Интерактивная документация (без JWT):
+
+- UI: http://localhost:3000/api/docs (или через Nginx http://localhost:8080/api/docs)
+- JSON: http://localhost:3000/api/openapi.json
+
+Спека: `src/docs/openapi.yaml`. В Swagger UI можно нажать **Authorize** и вставить Bearer accessToken после login.
+
 ## Мониторинг (Grafana / Prometheus)
 
 Стек мониторинга поднимается вместе с инфраструктурой:
