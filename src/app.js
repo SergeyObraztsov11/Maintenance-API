@@ -15,11 +15,14 @@ import { authenticate } from "./middlewares/authenticate.js";
 import { config } from "./config/index.js";
 import authRoutes from "./routes/authRoutes.js";
 import cookieParser from "cookie-parser";
+import metricsRoutes from "./routes/metricsRoutes.js";
+import { metricsMiddleware } from "./middlewares/metricsMiddleware.js";
 
 const app = express();
 
 app.use(requestId);
 app.use(requestLogger);
+app.use(metricsMiddleware);
 app.use(express.json({ limit: "100kb" }));
 app.use(cookieParser());
 app.use(helmet());
@@ -32,9 +35,10 @@ app.use(
 );
 
 app.use("/api", apiRateLimit);
-app.use("/api/health", healthRoutes);
 
+app.use("/api/health", healthRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/metrics", metricsRoutes);
 
 app.use("/api", authenticate);
 
