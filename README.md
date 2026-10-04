@@ -393,18 +393,20 @@ Query (опционально): `from`, `to` (ISO, фильтр по `created_at
 
 ## Тесты (Jest)
 
-Нужна отдельная БД `maintenance_test` (чтобы не затирать dev-данные):
+Нужен запущенный Postgres (`docker compose up -d db`).  
+При `npm test` Jest сам создаст БД `maintenance_test` (если её нет) и накатит миграции.
 
 ```bash
 docker compose up -d db
-docker compose exec -T db psql -U maintenance -d postgres -c "CREATE DATABASE maintenance_test;"
-npm run test:db:migrate
 npm test
 npm run test:coverage
 ```
 
+При необходимости вручную: `npm run test:db:migrate`.
+
 - Unit: переходы статусов, crew/assignees, роли (`allowedRoles`), weather (mock провайдера)
-- Integration: auth, 401/403/409, CRUD equipment
+- Integration: auth, 401/403/409, CRUD equipment, reports/health, delete/422
+- Migrations: `db:migrate:undo:all` → `db:migrate`, плюс откат последней миграции и повторный накат
 - Тесты ходят в Postgres `TEST_DB_NAME` (по умолчанию `maintenance_test`) и чистят таблицы между кейсами
 
 ## OpenAPI / Swagger

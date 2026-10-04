@@ -3,6 +3,7 @@ const config = {
     testEnvironment: "node",
     roots: ["<rootDir>/tests"],
     testMatch: ["**/*.test.js"],
+    globalSetup: "<rootDir>/tests/globalSetup.js",
     setupFiles: ["<rootDir>/tests/setupEnv.js"],
     clearMocks: true,
     // Shared Postgres test DB — avoid parallel writers.
