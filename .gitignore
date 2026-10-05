@@ -1,3 +1,7 @@
 node_modules/
 .env
 coverage/
+
+# Local Docker image export (deploy variant B)
+maintenance-api.tar
+

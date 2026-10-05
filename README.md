@@ -78,7 +78,7 @@ cp .env.example .env
 
 ```bash
 cp .env.example .env     # настройки
-npm run docker:up        # весь стек
+npm run docker:up        # собрать образ API и поднять весь стек
 npm run docker:seed      # демо-данные в контейнере api
 ```
 
@@ -92,8 +92,9 @@ npm run docker:seed      # демо-данные в контейнере api
 | Grafana | http://127.0.0.1:3001 (`admin` / `admin`) |
 | Prometheus | http://127.0.0.1:9090 |
 
-Остановка: `npm run docker:down`.  
-Деплой и мониторинг: [`docs/deployment.md`](docs/deployment.md).
+Остановка: `npm run docker:down`.
+
+На слабом сервере образ API можно собрать на ПК (`npm run docker:build` → `docker save` → на сервере `docker load` → `npm run docker:start`); стек и команды те же. Деплой и мониторинг: [`docs/deployment.md`](docs/deployment.md).
 
 ### API на хосте
 
@@ -206,6 +207,7 @@ Workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 |---------|------------|
 | `docker compose up -d db` | Поднять только Postgres |
 | `npm run docker:up` | Собрать образ API и поднять весь стек (db, api, nginx, prometheus, grafana) |
+| `npm run docker:start` | Поднять стек без пересборки (нужен образ `maintenance-api`) |
 | `npm run docker:down` | Остановить и убрать контейнеры стека (тома остаются) |
 | `docker compose down -v` | То же + удалить тома (БД с нуля) |
 | `npm run docker:seed` | Сиды внутри контейнера `api` |
