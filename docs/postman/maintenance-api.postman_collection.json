@@ -1,13 +1,13 @@
 {
   "info": {
     "name": "Maintenance API",
-    "description": "Case 4: Maintenance API with JWT auth.\n\nVariables: baseUrl, accessToken, equipmentId, requestId, serialNumber, technicianId, technicianId2, siteId.\n\nSeed users (npm run seed), password for all: password123\n- admin@example.com (admin)\n- viewer@example.com (viewer)\n- tech1@example.com ... tech5@example.com (technicians t1...t5)\n\nFlow: Login -> GET list requests -> paste id into requestId -> edit body -> Send.\nRefresh/Logout use httpOnly cookie (Postman cookie jar).",
+    "description": "Case 4: Maintenance API with JWT auth.\n\nVariables: baseUrl (default http://localhost:8080 via Nginx; use http://localhost:3000 for npm run dev), accessToken, equipmentId, requestId, serialNumber, technicianId, technicianId2, siteId.\n\nSeed users (npm run seed), password for all: password123\n- admin@example.com (admin)\n- viewer@example.com (viewer)\n- tech1@example.com ... tech5@example.com (technicians t1...t5)\n\nFlow: Login -> GET list requests -> paste id into requestId -> edit body -> Send.\nRefresh/Logout use httpOnly cookie (Postman cookie jar).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:3000"
+      "value": "http://localhost:8080"
     },
     {
       "key": "accessToken",
@@ -73,11 +73,22 @@
       "name": "Health",
       "item": [
         {
-          "name": "GET health",
+          "name": "GET health live",
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/api/health",
+            "url": "{{baseUrl}}/api/health/live",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "GET health ready",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/health/ready",
             "auth": {
               "type": "noauth"
             }
@@ -737,11 +748,19 @@
       "name": "Reports",
       "item": [
         {
-          "name": "GET site summary",
+          "name": "GET site summary (sites)",
           "request": {
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/sites/{{siteId}}/summary"
+          }
+        },
+        {
+          "name": "GET site summary (reports)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/reports/sites/{{siteId}}/summary"
           }
         },
         {
@@ -889,7 +908,10 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/api/health",
+            "url": "{{baseUrl}}/api/health/live",
+            "auth": {
+              "type": "noauth"
+            },
             "description": "Temporarily set RATE_LIMIT_MAX=3, restart server, then send this request until limit is exceeded (4+ times). Expects 429 only."
           }
         },
