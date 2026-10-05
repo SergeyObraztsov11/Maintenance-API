@@ -67,16 +67,28 @@ EOF
 cat .env
 ```
 
-### 4. Поднять стек
+### 4. Поднять стек (два варианта)
+
+Перед этим на **сервере** уже сделаны шаги 1–3 (Docker / Node / git, клон репо, `.env`).  
+Клон нужен в обоих вариантах: в образе только API, а `docker-compose.yml` и конфиги из `deploy/` лежат в репозитории.
+
+Результат одинаковый: Nginx `:8080`, Postgres, Prometheus, Grafana. Отличается только место сборки образа API.
+
+#### Вариант A — сборка на сервере
+
+Всё на сервере, в каталоге репозитория:
 
 ```bash
+cd /var/www/Maintenance-API   # или путь, куда клонировали
 npm run docker:up
 npm run docker:seed
 ```
 
+`docker:up` = `docker compose up --build -d` (собирает образ `maintenance-api` и поднимает стек).
+
 Остановка: `npm run docker:down`.
 
-С очисткой томов:
+С очисткой томов (БД с нуля):
 
 ```bash
 docker compose down -v
@@ -84,9 +96,46 @@ npm run docker:up
 npm run docker:seed
 ```
 
+#### Вариант B — сборка на ПК (слабый VPS)
+
+Тяжёлый `docker build` на компьютере; на сервер уезжает готовый образ. На сервере **не** вызывайте `npm run docker:up` — он снова начнёт сборку.
+
+**На ПК** (корень репозитория, Docker Desktop; репо уже есть локально):
+
+```bash
+cd /path/to/Maintenance-API
+npm run docker:build
+docker save -o maintenance-api.tar maintenance-api
+```
+
+Передать архив (Windows PowerShell, подставьте IP; спросит пароль root):
+
+```powershell
+scp maintenance-api.tar root@SERVER_IP:/var/www/Maintenance-API/
+```
+
+**На сервере:**
+
+```bash
+cd /var/www/Maintenance-API
+docker load -i maintenance-api.tar
+npm run docker:start
+npm run docker:seed
+```
+
+`docker:start` = `docker compose up -d` **без** `--build` (берёт образ `maintenance-api` из `docker load`).  
+Postgres / Nginx / Prometheus / Grafana при первом запуске скачаются с Docker Hub.
+
+Дальше те же команды, что и в варианте A: `docker:logs`, `docker:down`, `docker compose down -v`.
+
 ### 5. Проверить доступ
 
 Локально — URL из README. На сервере вместо `localhost` подставьте IP или домен (`http://203.0.113.10:8080`). Grafana и Prometheus слушают `127.0.0.1`: доступ с сервера или через SSH-туннель.
+
+```bash
+docker compose ps
+curl -sS http://127.0.0.1:8080/api/health/live
+```
 
 ## API на хосте
 
