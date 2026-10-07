@@ -7,8 +7,12 @@ info:
     Refresh token is sent as httpOnly cookie.
   version: 1.0.0
 servers:
+  - url: /
+    description: Same host as Swagger page (recommended)
+  - url: http://127.0.0.1:8080
+    description: Docker via Nginx (127.0.0.1 / port-forward)
   - url: http://localhost:8080
-    description: Docker stack via Nginx
+    description: Docker via Nginx (localhost)
   - url: http://localhost:3000
     description: Local API (npm run dev)
 tags:
